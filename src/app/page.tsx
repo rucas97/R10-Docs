@@ -111,7 +111,7 @@ export default function Home() {
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Upload a PDF to get started</h2>
-            <p className="text-gray-500 max-w-sm">Ask questions about any PDF. Powered by Google Gemini.</p>
+            <p className="text-gray-500 max-w-sm">Ask questions about any PDF. Upload any PDF and start chatting.</p>
           </div>
         ) : (
           <div className="space-y-6">
