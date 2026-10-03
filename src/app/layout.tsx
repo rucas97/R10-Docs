@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ChatPDF Reza Salman",
-  description: "Chat with any PDF using Google Gemini AI",
+  title: "R10-Docs",
+  description: "Chat with any PDF using AI",
 };
 
 export default function RootLayout({
