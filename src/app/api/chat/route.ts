@@ -11,18 +11,18 @@ export async function POST(req: NextRequest) {
     }
 
     const systemPrompt =
-      'You are a helpful assistant that answers questions about a PDF document.\n\n' +
-      'Document content:\n' +
+      'شما یک دستیار مفید هستید که به سؤالات کاربر درباره محتوای یک سند PDF پاسخ می‌دهید.\n\n' +
+      'محتوای سند:\n' +
       documentText +
-      '\n\nInstructions:\n' +
-      '- Answer questions based ONLY on the document content above\n' +
-      '- If the answer is not in the document, say "I couldn\'t find that information in the document"\n' +
-      '- Be concise and accurate\n' +
-      '- Quote relevant sections when helpful';
+      '\n\nدستورالعمل‌ها:\n' +
+      '- همیشه به زبان فارسی پاسخ دهید\n' +
+      '- فقط بر اساس محتوای سند بالا پاسخ دهید\n' +
+      '- اگر پاسخ در سند نیست، بگویید: «این اطلاعات در سند یافت نشد»\n' +
+      '- مختصر و دقیق باشید\n' +
+      '- در صورت لزوم بخش‌های مرتبط را نقل کنید';
 
-    // Using the model you requested. It will fail with 403 if the proxy is not working.
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-1.5-flash',
       systemInstruction: systemPrompt,
     });
 

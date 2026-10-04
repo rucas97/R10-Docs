@@ -35,10 +35,10 @@ export default function Home() {
       setDocumentText(data.text);
       setMessages([{
         role: 'assistant',
-        content: `I've analyzed "${file.name}" (${data.numPages} pages). Ask me anything about it!`,
+        content: `سند «${file.name}» (${data.numPages} صفحه) را بررسی کردم. هر سؤالی دارید بپرسید!`,
       }]);
     } catch {
-      setMessages([{ role: 'assistant', content: 'Sorry, there was an error processing your PDF.' }]);
+      setMessages([{ role: 'assistant', content: 'متأسفانه خطایی در پردازش PDF رخ داد. لطفاً دوباره تلاش کنید.' }]);
     } finally {
       setIsUploading(false);
     }
@@ -80,14 +80,14 @@ export default function Home() {
         });
       }
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong.' }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: 'متأسفانه مشکلی پیش آمد. لطفاً دوباره تلاش کنید.' }]);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col h-screen bg-gray-50" dir="rtl">
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -102,7 +102,7 @@ export default function Home() {
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
           disabled={isUploading}
         >
-          {isUploading ? 'Uploading...' : 'Upload PDF'}
+          {isUploading ? 'در حال بارگذاری...' : 'بارگذاری PDF'}
         </button>
         <input ref={fileInputRef} type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" />
       </header>
@@ -110,22 +110,22 @@ export default function Home() {
       <main className="flex-1 overflow-y-auto px-4 py-6 max-w-4xl mx-auto w-full">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Upload a PDF to get started</h2>
-            <p className="text-gray-500 max-w-sm">Ask questions about any PDF. Upload any PDF and start chatting.</p>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">برای شروع یک PDF بارگذاری کنید</h2>
+            <p className="text-gray-500 max-w-sm">درباره هر سند PDF سؤال بپرسید. پاسخ‌ها بر اساس محتوای همان سند ارائه می‌شوند.</p>
           </div>
         ) : (
           <div className="space-y-6">
             {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}>
                 <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${
                   msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-800'
                 }`}>
-                  <p className="text-sm whitespace-pre-wrap">{msg.content || '...'}</p>
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content || '...'}</p>
                 </div>
               </div>
             ))}
             {isLoading && (
-              <div className="flex justify-start">
+              <div className="flex justify-end">
                 <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3">
                   <div className="flex gap-1">
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
@@ -147,7 +147,7 @@ export default function Home() {
               type="text"
               value={input}
               onChange={e => setInput(e.target.value)}
-              placeholder="Ask a question about your PDF..."
+              placeholder="سؤالی درباره PDF خود بپرسید..."
               className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               disabled={isLoading}
             />
@@ -156,7 +156,7 @@ export default function Home() {
               disabled={isLoading || !input.trim()}
               className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
             >
-              Send
+              ارسال
             </button>
           </form>
         </footer>
