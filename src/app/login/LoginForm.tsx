@@ -3,33 +3,52 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Sparkles, Loader2, ArrowRight } from 'lucide-react';
+import { Sparkles, Loader2, ArrowRight, AlertCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 export function LoginForm() {
   const params = useSearchParams();
   const errorParam = params.get('error');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(
-    errorParam ? 'ورود ناموفق بود. لطفاً دوباره تلاش کنید.' : null
-  );
+  const [error, setError] = useState<string | null>(errorParam ?? null);
 
   const signInWithGoogle = async () => {
     setLoading(true);
     setError(null);
     const supabase = createClient();
+
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: window.location.origin + '/auth/callback',
+        // Explicit scopes help Supabase's server exchange the code with Google
+        scopes: 'openid email profile',
+        // Force PKCE flow which is more reliable with @supabase/ssr
+        flowType: 'pkce',
         queryParams: { prompt: 'select_account' },
       },
     });
+
     if (oauthError) {
       setError(oauthError.message);
       setLoading(false);
     }
   };
+
+  const friendly = (raw: string | null) => {
+    if (!raw) return null;
+    if (raw === 'no_code') return 'پاسخ گوگل ناقص بود. لطفاً دوباره تلاش کنید.';
+    if (raw === 'auth_failed') return 'ورود ناموفق بود. لطفاً دوباره تلاش کنید.';
+    if (raw.toLowerCase().includes('unable to exchange')) {
+      return 'سرور احراز هویت قادر به تکمیل ورود نیست. لطفاً یک دقیقه صبر کنید و دوباره تلاش کنید.';
+    }
+    if (raw.toLowerCase().includes('code verifier')) {
+      return 'کوکی‌های مرورگر اجازه ورود نمی‌دهند. کوکی‌ها را برای این سایت فعال کنید.';
+    }
+    return raw;
+  };
+
+  const shownError = friendly(error);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-slate-50 dark:bg-slate-950">
@@ -50,9 +69,10 @@ export function LoginForm() {
             برای ذخیره سوابق گفتگو و اسناد خود، با حساب گوگل وارد شوید.
           </p>
 
-          {error && (
-            <div className="mb-5 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs text-rose-700 dark:text-rose-300 text-center">
-              {error}
+          {shownError && (
+            <div className="mb-5 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs text-rose-700 dark:text-rose-300 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span dir="auto" className="break-all">{shownError}</span>
             </div>
           )}
 
