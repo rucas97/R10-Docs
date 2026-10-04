@@ -3,11 +3,37 @@ import { genAI } from '@/lib/gemini';
 
 export const runtime = 'nodejs';
 
+// Friendly, non-developer Farsi error messages mapped to failure types
+function friendlyError(status: number, message: string): string {
+  const msg = (message || '').toLowerCase();
+
+  if (status === 404 || msg.includes('not found') || msg.includes('not supported')) {
+    return 'در حال حاضر امکان پاسخ‌دهی به این سند وجود ندارد. لطفاً بعداً دوباره تلاش کنید.';
+  }
+  if (status === 403 || msg.includes('forbidden') || msg.includes('permission')) {
+    return 'دسترسی به سرویس هوش مصنوعی در این لحظه ممکن نیست. کمی بعد دوباره امتحان کنید.';
+  }
+  if (status === 429 || msg.includes('quota') || msg.includes('rate')) {
+    return 'تعداد درخواست‌ها زیاد شده است. لطفاً چند لحظه صبر کنید و دوباره بپرسید.';
+  }
+  if (status === 400 || msg.includes('invalid')) {
+    return 'سند شما قابل پردازش نبود. ممکن است فایل آسیب دیده یا خالی باشد. لطفاً یک PDF دیگر امتحان کنید.';
+  }
+  if (msg.includes('fetch failed') || msg.includes('network') || msg.includes('timeout')) {
+    return 'ارتباط با سرور برقرار نشد. لطفاً اتصال اینترنت خود را بررسی کنید و دوباره تلاش کنید.';
+  }
+  return 'خطایی از سمت ما رخ داد. از بابت این مشکل عذرخواهی می‌کنیم. لطفاً دوباره تلاش کنید.';
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { messages, documentText } = await req.json();
+
     if (!documentText) {
-      return NextResponse.json({ error: 'No document text provided' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'محتوای سند خالی است. لطفاً یک PDF معتبر بارگذاری کنید.' },
+        { status: 400 }
+      );
     }
 
     const systemPrompt =
@@ -21,8 +47,9 @@ export async function POST(req: NextRequest) {
       '- مختصر و دقیق باشید\n' +
       '- در صورت لزوم بخش‌های مرتبط را نقل کنید';
 
+    // Correct current model ID. gemini-1.5-flash was retired.
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-3.5-flash',
       systemInstruction: systemPrompt,
     });
 
@@ -54,17 +81,23 @@ export async function POST(req: NextRequest) {
             controller.enqueue(encoder.encode(chunk.text()));
           }
           controller.close();
-        } catch (error) {
-          controller.error(error);
+        } catch (error: any) {
+          // Stream-level failure — send a friendly Farsi message instead of dying silently
+          const friendly = friendlyError(error?.status ?? 500, error?.message ?? '');
+          controller.enqueue(encoder.encode(friendly));
+          controller.close();
         }
       },
     });
 
     return new NextResponse(stream, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Transfer-Encoding': 'chunked' },
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Transfer-Encoding': 'chunked',
+      },
     });
-  } catch (error) {
-    console.error('Chat API error:', error);
-    return NextResponse.json({ error: 'Failed to process chat request' }, { status: 500 });
+  } catch (error: any) {
+    const friendly = friendlyError(error?.status ?? 500, error?.message ?? '');
+    return NextResponse.json({ error: friendly }, { status: 200 });
   }
 }
