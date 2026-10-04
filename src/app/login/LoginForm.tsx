@@ -21,11 +21,13 @@ export function LoginForm() {
       provider: 'google',
       options: {
         redirectTo: window.location.origin + '/auth/callback',
+        scopes: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
         queryParams: { prompt: 'select_account' },
       },
     });
 
     if (oauthError) {
+      console.error('OAuth error:', oauthError);
       setError(oauthError.message);
       setLoading(false);
     }
@@ -36,7 +38,7 @@ export function LoginForm() {
     if (raw === 'no_code') return 'پاسخ گوگل ناقص بود. لطفاً دوباره تلاش کنید.';
     if (raw === 'auth_failed') return 'ورود ناموفق بود. لطفاً دوباره تلاش کنید.';
     if (raw.toLowerCase().includes('unable to exchange')) {
-      return 'سرور احراز هویت قادر به تکمیل ورود نیست. لطفاً یک دقیقه صبر کنید و دوباره تلاش کنید.';
+      return 'تنظیمات ورود به گوگل نادرست است. لطفاً با پشتیبانی تماس بگیرید.';
     }
     return raw;
   };
