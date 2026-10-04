@@ -21,7 +21,6 @@ export function LoginForm() {
       provider: 'google',
       options: {
         redirectTo: window.location.origin + '/auth/callback',
-        scopes: 'openid email profile',
         queryParams: { prompt: 'select_account' },
       },
     });
@@ -38,9 +37,6 @@ export function LoginForm() {
     if (raw === 'auth_failed') return 'ورود ناموفق بود. لطفاً دوباره تلاش کنید.';
     if (raw.toLowerCase().includes('unable to exchange')) {
       return 'سرور احراز هویت قادر به تکمیل ورود نیست. لطفاً یک دقیقه صبر کنید و دوباره تلاش کنید.';
-    }
-    if (raw.toLowerCase().includes('code verifier')) {
-      return 'کوکی‌های مرورگر اجازه ورود نمی‌دهند. کوکی‌ها را برای این سایت فعال کنید.';
     }
     return raw;
   };
