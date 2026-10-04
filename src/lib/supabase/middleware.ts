@@ -8,6 +8,11 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      auth: {
+        flowType: 'pkce',
+        autoRefreshToken: true,
+        detectSessionInUrl: false,
+      },
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -31,7 +36,6 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
 
-  // Protect /chat — bounce unauthenticated visitors to /login
   if (!user && (path === '/chat' || path.startsWith('/chat/'))) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
@@ -39,7 +43,6 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // If already signed in, don't show /login again
   if (user && path === '/login') {
     const url = request.nextUrl.clone();
     url.pathname = '/chat';

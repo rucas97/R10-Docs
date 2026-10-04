@@ -21,10 +21,7 @@ export function LoginForm() {
       provider: 'google',
       options: {
         redirectTo: window.location.origin + '/auth/callback',
-        // Explicit scopes help Supabase's server exchange the code with Google
         scopes: 'openid email profile',
-        // Force PKCE flow which is more reliable with @supabase/ssr
-        flowType: 'pkce',
         queryParams: { prompt: 'select_account' },
       },
     });
