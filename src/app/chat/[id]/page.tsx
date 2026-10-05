@@ -22,7 +22,6 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
     .eq('chat_id', id)
     .order('created_at', { ascending: true });
 
-  // Signed URL for PDF (1 hour)
   let pdfUrl: string | null = null;
   if (chat.file_path) {
     const { data } = await supabase.storage

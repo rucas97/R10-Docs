@@ -18,16 +18,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Only PDF allowed' }, { status: 400 });
     }
 
-    // 1. Extract text
     const bytes = await file.arrayBuffer();
     const uint8 = new Uint8Array(bytes);
+
+    // Extract text per page
     const { extractText, getDocumentProxy } = await import('unpdf');
     const pdf = await getDocumentProxy(uint8);
-    const { text, totalPages } = await extractText(pdf, { mergePages: true });
 
-    const documentText = String(text).slice(0, 200_000); // cap for storage
+    let pageTexts: string[] = [];
+    let totalPages = 0;
 
-    // 2. Create chat row first so we know the id
+    try {
+      const { text } = await extractText(pdf, { mergePages: false });
+      pageTexts = Array.isArray(text) ? (text as string[]) : [String(text)];
+      totalPages = pageTexts.length;
+    } catch {
+      // Fallback: merged text only
+      const { text, totalPages: tp } = await extractText(pdf, { mergePages: true });
+      pageTexts = [String(text)];
+      totalPages = tp;
+    }
+
+    const documentText = pageTexts.join('\n\n---\n\n').slice(0, 200_000);
+
+    // Create chat row
     const { data: chat, error: insertErr } = await supabase
       .from('chats')
       .insert({
@@ -36,6 +50,7 @@ export async function POST(req: NextRequest) {
         file_name: file.name,
         page_count: totalPages,
         document_text: documentText,
+        page_texts: pageTexts,
       })
       .select('id')
       .single();
@@ -43,27 +58,26 @@ export async function POST(req: NextRequest) {
     if (insertErr || !chat) throw new Error(insertErr?.message || 'Insert failed');
     const chatId = chat.id;
 
-    // 3. Upload PDF to storage: pdfs/{user_id}/{chat_id}.pdf
+    // Upload PDF to storage
     const filePath = `${user.id}/${chatId}.pdf`;
     const { error: upErr } = await supabase.storage
       .from('pdfs')
       .upload(filePath, uint8, { contentType: 'application/pdf', upsert: true });
 
-    if (upErr) {
-      console.error('[upload] storage error:', upErr.message);
-    } else {
+    if (!upErr) {
       await supabase.from('chats').update({ file_path: filePath }).eq('id', chatId);
+    } else {
+      console.error('[upload] storage error:', upErr.message);
     }
 
-    // 4. Generate a short Persian summary via Gemini
+    // Generate Persian summary
     let summary = '';
     try {
       const excerpt = documentText.slice(0, 15_000);
       const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
       const result = await model.generateContent(
         'این سند را در یک پاراگراف کوتاه (حداکثر ۳ جمله) به فارسی خلاصه کن. ' +
-        'فقط خود خلاصه را بنویس، بدون مقدمه یا عنوان:\n\n' +
-        excerpt
+        'فقط خود خلاصه را بنویس، بدون مقدمه یا عنوان:\n\n' + excerpt
       );
       summary = result.response.text().trim();
     } catch (e: any) {
@@ -73,7 +87,6 @@ export async function POST(req: NextRequest) {
 
     await supabase.from('chats').update({ summary }).eq('id', chatId);
 
-    // 5. Insert initial assistant greeting
     await supabase.from('messages').insert({
       chat_id: chatId,
       role: 'assistant',

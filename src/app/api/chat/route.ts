@@ -28,10 +28,9 @@ export async function POST(req: NextRequest) {
     const { chatId, messages } = await req.json();
     if (!chatId) return NextResponse.json({ error: 'Missing chatId' }, { status: 400 });
 
-    // Load chat + verify ownership (RLS also enforces this)
     const { data: chat, error: chatErr } = await supabase
       .from('chats')
-      .select('id, document_text, summary')
+      .select('id, document_text, summary, page_texts')
       .eq('id', chatId)
       .single();
 
@@ -39,22 +38,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Chat not found' }, { status: 404 });
     }
 
+    // Build page-tagged context so Gemini can reference pages accurately
+    const pageTexts: string[] = Array.isArray(chat.page_texts) ? (chat.page_texts as string[]) : [];
+    const taggedContext = pageTexts.length > 1
+      ? pageTexts
+          .map((t, i) => `===[صفحه ${i + 1}]===\n${t}`)
+          .join('\n\n')
+          .slice(0, 100_000)
+      : (chat.document_text || '').slice(0, 100_000);
+
     const systemPrompt =
       'شما یک دستیار مفید هستید که به سؤالات کاربر درباره محتوای یک سند PDF پاسخ می‌دهید.\n\n' +
       'خلاصه سند:\n' + (chat.summary || '') + '\n\n' +
-      'محتوای کامل سند:\n' + (chat.document_text || '') + '\n\n' +
-      'دستورالعمل‌ها:\n' +
+      'محتوای سند (صفحه‌به‌صفحه):\n' + taggedContext + '\n\n' +
+      'دستورالعمل‌های پاسخ:\n' +
       '- همیشه به زبان فارسی پاسخ دهید\n' +
       '- فقط بر اساس محتوای سند پاسخ دهید\n' +
       '- اگر پاسخ در سند نیست، بگویید: «این اطلاعات در سند یافت نشد»\n' +
-      '- مختصر و دقیق باشید';
+      '- مختصر و دقیق باشید\n' +
+      '- **مهم**: در انتهای هر پاسخ، شماره صفحاتی که استفاده کرده‌اید را دقیقاً در این قالب بنویسید:\n' +
+      '  [منابع: ص۳، ص۷]\n' +
+      '  شماره‌ها را با ارقام فارسی بنویسید و صفحات را با «،» جدا کنید.\n' +
+      '  اگر پاسخی در سند نبود، این خط را ننویسید.';
 
     const model = genAI.getGenerativeModel({
       model: 'gemini-3.5-flash',
       systemInstruction: systemPrompt,
     });
 
-    // Save user's last message first
     const lastMessage = messages[messages.length - 1];
     await supabase.from('messages').insert({
       chat_id: chatId,
@@ -62,7 +73,6 @@ export async function POST(req: NextRequest) {
       content: lastMessage.content,
     });
 
-    // Build clean history (must start with user, no empty turns)
     const prior = messages.slice(0, -1);
     const cleanHistory: { role: 'user' | 'model'; parts: { text: string }[] }[] = [];
     for (const msg of prior) {
@@ -94,7 +104,6 @@ export async function POST(req: NextRequest) {
           }
           controller.close();
 
-          // Persist assistant reply + bump updated_at
           await supabase.from('messages').insert({
             chat_id: chatId,
             role: 'assistant',
