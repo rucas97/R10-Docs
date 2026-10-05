@@ -14,10 +14,10 @@
     "@supabase/supabase-js": "^2.117.2",
     "lucide-react": "^1.52.0",
     "next": "16.3.8",
+    "pdfjs-dist": "^4.8.69",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-markdown": "^10.1.0",
-    "react-pdf": "^11.0.0",
     "undici": "^8.11.2",
     "unpdf": "^1.8.1"
   },
