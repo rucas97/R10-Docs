@@ -17,13 +17,13 @@ const PdfViewerInner = dynamic(() => import('./PdfViewerInner'), {
 export function SourceModal({
   citations,
   initialIndex,
-  pdfUrl,
+  chatId,
   primaryLanguage = 'en',
   onClose,
 }: {
   citations: Citation[];
   initialIndex: number;
-  pdfUrl: string | null;
+  chatId: string;
   primaryLanguage?: 'fa' | 'en';
   onClose: () => void;
 }) {
@@ -94,7 +94,7 @@ export function SourceModal({
 
         <div className="flex-1 overflow-hidden bg-slate-200 dark:bg-slate-950">
           <PdfViewerInner
-            pdfUrl={pdfUrl}
+            chatId={chatId}
             pageCount={Math.max(...citations.map((c) => c.page))}
             currentPage={page}
             onPageChange={(p) => {

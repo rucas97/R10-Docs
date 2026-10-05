@@ -1,47 +1,47 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { ChevronRight, ChevronLeft, ExternalLink, FileText } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import {
+  ChevronRight, ChevronLeft, ExternalLink, FileText, PanelRightClose, PanelRightOpen,
+} from 'lucide-react';
 import { toPersianNumber } from '@/lib/citations';
 
 export default function PdfViewerInner({
-  pdfUrl,
+  chatId,
   pageCount,
   currentPage,
   onPageChange,
   highlightSnippet = '',
 }: {
-  pdfUrl: string | null;
+  chatId: string;
   pageCount: number;
   currentPage: number;
   onPageChange: (p: number) => void;
   primaryLanguage?: 'fa' | 'en';
   highlightSnippet?: string;
 }) {
-  const [zoomPct, setZoomPct] = useState(100);
+  const [showThumbs, setShowThumbs] = useState(true);
 
-  // Build the iframe URL with browser-native PDF viewer parameters.
-  // Supported by Chrome, Edge, Brave, Opera, and Chromium-based browsers.
-  // Safari/Firefox honor #page and #zoom; #search is Chrome/Edge only.
-  const iframeSrc = useMemo(() => {
-    if (!pdfUrl) return '';
+  // Build a URL to our hosted PDF.js viewer.
+  // ?file=  → URL-encoded path to our same-origin PDF proxy
+  // #page=  → jump to page
+  // #pagemode=thumbs → open the thumbnail sidebar
+  // #search=  → auto-highlight the quoted snippet (Chrome/Edge/Firefox)
+  const viewerSrc = useMemo(() => {
+    const filePath = `/api/pdf/${chatId}`;
+    const encoded = encodeURIComponent(filePath);
+
     const hash = new URLSearchParams();
     hash.set('page', String(currentPage));
-    hash.set('zoom', String(zoomPct));
-    hash.set('toolbar', '1');
+    hash.set('zoom', 'page-width');
+    if (showThumbs) hash.set('pagemode', 'thumbs');
     if (highlightSnippet && highlightSnippet.trim().length > 3) {
       hash.set('search', highlightSnippet.trim().slice(0, 200));
+      hash.set('phrase', 'true');
     }
-    return `${pdfUrl}#${hash.toString()}`;
-  }, [pdfUrl, currentPage, zoomPct, highlightSnippet]);
 
-  if (!pdfUrl) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-6 text-center">
-        <p className="text-xs text-slate-400 dark:text-slate-500">فایل PDF در دسترس نیست.</p>
-      </div>
-    );
-  }
+    return `/pdfjs-viewer/viewer.html?file=${encoded}#${hash.toString()}`;
+  }, [chatId, currentPage, highlightSnippet, showThumbs]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -57,20 +57,13 @@ export default function PdfViewerInner({
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
           <button
-            onClick={() => setZoomPct((z) => Math.max(50, z - 25))}
-            disabled={zoomPct <= 50}
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 disabled:opacity-30 transition"
-            title="کوچک‌نمایی"
+            onClick={() => setShowThumbs((v) => !v)}
+            title={showThumbs ? 'پنهان کردن بندانگشتی‌ها' : 'نمایش بندانگشتی‌ها'}
+            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition"
           >
-            <span className="text-xs">−</span>
-          </button>
-          <button
-            onClick={() => setZoomPct((z) => Math.min(300, z + 25))}
-            disabled={zoomPct >= 300}
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 disabled:opacity-30 transition"
-            title="بزرگ‌نمایی"
-          >
-            <span className="text-xs">+</span>
+            {showThumbs
+              ? <PanelRightClose className="w-4 h-4" />
+              : <PanelRightOpen className="w-4 h-4" />}
           </button>
           <button
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
@@ -89,7 +82,7 @@ export default function PdfViewerInner({
             <ChevronLeft className="w-4 h-4" />
           </button>
           <a
-            href={iframeSrc || '#'}
+            href={viewerSrc}
             target="_blank"
             rel="noreferrer"
             className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition"
@@ -100,11 +93,11 @@ export default function PdfViewerInner({
         </div>
       </div>
 
-      {/* Native PDF iframe */}
+      {/* PDF.js viewer in an iframe (works on Android Chrome) */}
       <div className="flex-1 overflow-hidden bg-slate-300 dark:bg-slate-800">
         <iframe
-          key={iframeSrc}
-          src={iframeSrc}
+          key={viewerSrc}
+          src={viewerSrc}
           className="w-full h-full border-0"
           title="نمایش سند PDF"
         />
