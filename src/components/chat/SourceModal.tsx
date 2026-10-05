@@ -18,14 +18,12 @@ export function SourceModal({
   citations,
   initialIndex,
   pdfUrl,
-  chatId,
   primaryLanguage = 'en',
   onClose,
 }: {
   citations: Citation[];
   initialIndex: number;
   pdfUrl: string | null;
-  chatId: string;
   primaryLanguage?: 'fa' | 'en';
   onClose: () => void;
 }) {
@@ -105,7 +103,6 @@ export function SourceModal({
             }}
             highlightSnippet={snippet}
             primaryLanguage={primaryLanguage}
-            chatId={chatId}
           />
         </div>
 

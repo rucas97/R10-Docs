@@ -14,7 +14,6 @@ const PdfViewerInner = dynamic(() => import('./PdfViewerInner'), {
 
 export function PdfViewer(props: {
   pdfUrl: string | null;
-  chatId: string;
   pageCount: number;
   currentPage: number;
   onPageChange: (p: number) => void;

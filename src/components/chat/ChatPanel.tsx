@@ -203,7 +203,6 @@ export function ChatPanel({
     <div className="flex-1 flex flex-col overflow-hidden min-w-0">
       <PdfViewer
         pdfUrl={pdfUrl}
-        chatId={chat.id}
         pageCount={chat.pageCount}
         currentPage={currentPage}
         onPageChange={setCurrentPage}
@@ -246,7 +245,6 @@ export function ChatPanel({
           citations={modal.citations}
           initialIndex={modal.index}
           pdfUrl={pdfUrl}
-          chatId={chat.id}
           primaryLanguage={chat.primaryLanguage}
           onClose={() => setModal(null)}
         />
