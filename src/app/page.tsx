@@ -2,19 +2,29 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import {
   Sparkles, Sun, Moon, Upload, FileUp, Link as LinkIcon,
   CloudUpload, FolderOpen, Check, Lock, ArrowLeft,
   Stethoscope, Scale, TrendingUp, ChevronLeft, Zap, Quote,
   ShieldCheck, Languages, ChevronDown, Loader2,
+  User as UserIcon,
 } from 'lucide-react';
 
-type UploadMode = 'file' | 'url' | 'demo';
+type UploadMode = 'file' | 'demo';
 
 export default function LandingPage() {
   const router = useRouter();
   const [isDark, setIsDark] = useState(false);
   const [uploadMode, setUploadMode] = useState<UploadMode>('file');
+  const [user, setUser] = useState<{ email: string } | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.email) setUser({ email: data.user.email });
+    });
+  }, []);
   const [isDragging, setIsDragging] = useState(false);
   const [processing, setProcessing] = useState<{ name: string; progress: number } | null>(null);
 
@@ -63,9 +73,9 @@ export default function LandingPage() {
             <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-brand-700 via-brand-600 to-indigo-500 text-white flex items-center justify-center shadow-md shadow-brand-500/25 group-hover:scale-105 transition-transform">
               <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div className="flex flex-col text-right">
+            <div className="hidden sm:flex flex-col text-right">
               <span className="font-black text-base sm:text-lg text-slate-900 dark:text-white tracking-tight">R10-Docs</span>
-              <span className="text-[10px] sm:text-xs text-brand-600 dark:text-brand-400 font-semibold hidden xs:inline">دستیار هوشمند خوانش اسناد</span>
+              <span className="text-[10px] sm:text-xs text-brand-600 dark:text-brand-400 font-semibold">دستیار هوشمند خوانش اسناد</span>
             </div>
           </button>
 
@@ -76,30 +86,51 @@ export default function LandingPage() {
             <a href="#faqSection" className="hover:text-brand-600 dark:hover:text-brand-400 transition">سوالات متداول</a>
           </nav>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3">
             <button
               onClick={toggleTheme}
               title="تغییر تم"
               aria-label="تغییر تم"
-              className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-amber-400 transition active:scale-90 border border-slate-200 dark:border-slate-700"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-amber-400 transition active:scale-90 border border-slate-200 dark:border-slate-700 shrink-0"
             >
-              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              {isDark ? <Sun className="w-4 h-4 sm:w-5 sm:h-5" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5" />}
             </button>
 
-            <button
-              onClick={goToLogin}
-              className="hidden sm:inline-flex text-xs md:text-sm font-bold px-4 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-            >
-              ورود به پنل
-            </button>
-
+            {/* Upload — icon only on mobile, full text on desktop */}
             <button
               onClick={goToChat}
-              className="text-xs md:text-sm font-bold px-4 sm:px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white shadow-md shadow-brand-500/25 active:scale-95 transition-all flex items-center gap-1.5"
+              title="آپلود فایل"
+              className="text-xs md:text-sm font-bold w-9 h-9 sm:w-auto sm:h-auto sm:px-5 sm:py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white shadow-md shadow-brand-500/25 active:scale-95 transition-all flex items-center justify-center gap-1.5 shrink-0"
             >
               <Upload className="w-4 h-4" />
-              <span>آپلود فایل رایگان</span>
+              <span className="hidden sm:inline">آپلود فایل رایگان</span>
             </button>
+
+            {/* Login (signed out) — icon only on mobile */}
+            {!user && (
+              <button
+                onClick={goToLogin}
+                title="ورود به پنل"
+                className="text-xs md:text-sm font-bold w-9 h-9 sm:w-auto sm:h-auto sm:px-4 sm:py-2.5 rounded-xl text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 sm:bg-transparent sm:dark:bg-transparent transition flex items-center justify-center gap-2 shrink-0 border border-slate-200 dark:border-slate-700 sm:border-0"
+              >
+                <UserIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">ورود به پنل</span>
+              </button>
+            )}
+
+            {/* Avatar (signed in) — shows initial always, email on desktop */}
+            {user && (
+              <button
+                onClick={goToChat}
+                title={user.email}
+                className="text-xs md:text-sm font-bold h-9 sm:h-auto sm:px-3 sm:py-1.5 rounded-full sm:rounded-xl bg-brand-50 dark:bg-brand-950 border border-brand-200 dark:border-brand-800 hover:bg-brand-100 dark:hover:bg-brand-900 transition flex items-center justify-center gap-2 shrink-0 text-brand-700 dark:text-brand-300"
+              >
+                <span className="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center text-[11px] font-black">
+                  {(user.email[0] ?? '?').toUpperCase()}
+                </span>
+                <span className="hidden sm:inline max-w-[140px] truncate" dir="ltr">{user.email}</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -128,7 +159,7 @@ export default function LandingPage() {
           <div className="absolute -bottom-24 -left-24 w-60 h-60 bg-indigo-400/10 dark:bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
 
           {/* Tabs */}
-          <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 grid grid-cols-3 gap-2">
+          <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 grid grid-cols-2 gap-2">
             <button
               onClick={() => setUploadMode('file')}
               className={`py-2.5 px-3 rounded-2xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 ${
@@ -139,17 +170,6 @@ export default function LandingPage() {
             >
               <FileUp className="w-4 h-4" />
               <span>بارگذاری فایل</span>
-            </button>
-            <button
-              onClick={() => setUploadMode('url')}
-              className={`py-2.5 px-3 rounded-2xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                uploadMode === 'url'
-                  ? 'bg-white dark:bg-slate-800 text-brand-700 dark:text-brand-300 shadow-sm border border-slate-200/80 dark:border-slate-700'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <LinkIcon className="w-4 h-4" />
-              <span>آدرس اینترنتی</span>
             </button>
             <button
               onClick={() => setUploadMode('demo')}
@@ -212,41 +232,7 @@ export default function LandingPage() {
             )}
 
             {/* URL tab */}
-            {uploadMode === 'url' && (
-              <div className="p-6 sm:p-8 bg-slate-50 dark:bg-slate-950/60 rounded-3xl border border-slate-200/80 dark:border-slate-800">
-                <label className="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">
-                  آدرس مستقیم اینترنتی سند PDF:
-                </label>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="relative flex-1">
-                    <input
-                      type="url"
-                      placeholder="https://example.com/research-paper.pdf"
-                      dir="ltr"
-                      className="w-full pl-4 pr-10 py-3.5 text-xs sm:text-sm rounded-2xl border border-slate-300 dark:border-slate-700 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          const v = (e.target as HTMLInputElement).value.trim();
-                          if (v) simulateAndGo(v.split('/').pop() || 'online.pdf');
-                        }
-                      }}
-                    />
-                    <LinkIcon className="w-4 h-4 text-slate-400 absolute right-3.5 top-4" />
-                  </div>
-                  <button
-                    onClick={goToChat}
-                    className="px-6 py-3.5 bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 active:scale-95 text-white rounded-2xl text-xs sm:text-sm font-bold shadow-md shadow-brand-500/20 transition flex items-center justify-center gap-2"
-                  >
-                    <span>شروع بررسی سند</span>
-                    <ArrowLeft className="w-4 h-4" />
-                  </button>
-                </div>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">
-                  می‌توانید لینک مستقیم مقالات، پایان‌نامه‌ها یا گزارش‌های پژوهشی را اضافه کنید.
-                </p>
-              </div>
-            )}
-
+            
             {/* Demo tab */}
             {uploadMode === 'demo' && (
               <div>
