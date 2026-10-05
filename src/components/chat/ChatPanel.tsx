@@ -14,7 +14,7 @@ import { ChatInput } from './ChatInput';
 import { SummaryCard } from './SummaryCard';
 
 type Msg = { id: string; role: 'user' | 'assistant'; content: string };
-type ChatMeta = { id: string; title: string; fileName: string; pageCount: number; summary: string };
+type ChatMeta = { id: string; title: string; fileName: string; pageCount: number; summary: string; primaryLanguage: 'fa' | 'en' };
 type OpenSourceFn = (citations: Citation[], index: number) => void;
 
 const MessageBubble = memo(function MessageBubble({
@@ -201,7 +201,13 @@ export function ChatPanel({
 
   const readerColumn = (
     <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-      <PdfViewer pdfUrl={pdfUrl} pageCount={chat.pageCount} currentPage={currentPage} onPageChange={setCurrentPage} />
+      <PdfViewer
+        pdfUrl={pdfUrl}
+        pageCount={chat.pageCount}
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
+        primaryLanguage={chat.primaryLanguage}
+      />
     </div>
   );
 
@@ -239,6 +245,7 @@ export function ChatPanel({
           citations={modal.citations}
           initialIndex={modal.index}
           pdfUrl={pdfUrl}
+          primaryLanguage={chat.primaryLanguage}
           onClose={() => setModal(null)}
         />
       )}

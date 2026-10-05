@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { detectLanguage } from '@/lib/lang';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -111,11 +112,14 @@ export async function POST(req: NextRequest) {
     }
 
     const documentText = pageTexts.join('\n\n---\n\n').slice(0, 200_000);
+    const primaryLanguage = detectLanguage(documentText);
+    console.log('[upload] detected language:', primaryLanguage);
 
     await supabase.from('chats').update({
       page_count: totalPages,
       document_text: documentText,
       page_texts: pageTexts,
+      primary_language: primaryLanguage,
     }).eq('id', chatId);
 
     // 4. Welcome message

@@ -10,7 +10,7 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
 
   const { data: chat } = await supabase
     .from('chats')
-    .select('id, title, file_name, page_count, summary, file_path, created_at')
+    .select('id, title, file_name, page_count, summary, file_path, created_at, primary_language')
     .eq('id', id)
     .single();
 
@@ -33,6 +33,7 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
         fileName: chat.file_name ?? chat.title,
         pageCount: chat.page_count ?? 0,
         summary: chat.summary ?? '',
+        primaryLanguage: (chat.primary_language as 'fa' | 'en') ?? 'en',
       }}
       pdfUrl={pdfUrl}
       initialMessages={(messages ?? []).map((m) => ({

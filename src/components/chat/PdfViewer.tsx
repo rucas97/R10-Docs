@@ -17,6 +17,8 @@ export function PdfViewer(props: {
   pageCount: number;
   currentPage: number;
   onPageChange: (p: number) => void;
+  primaryLanguage?: 'fa' | 'en';
+  highlightSnippet?: string;
 }) {
   return <PdfViewerInner {...props} />;
 }

@@ -30,12 +30,14 @@ export default function PdfViewerInner({
   pageCount,
   currentPage,
   onPageChange,
+  primaryLanguage = 'en',
   highlightSnippet = '',
 }: {
   pdfUrl: string | null;
   pageCount: number;
   currentPage: number;
   onPageChange: (p: number) => void;
+  primaryLanguage?: 'fa' | 'en';
   highlightSnippet?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -223,7 +225,7 @@ export default function PdfViewerInner({
     })();
 
     return () => { cancelled = true; };
-  }, [currentPage, zoom, numPages, highlightSnippet, loading, renderKey]);
+  }, [currentPage, zoom, numPages, highlightSnippet, loading, renderKey, primaryLanguage]);
 
   if (!pdfUrl) {
     return (

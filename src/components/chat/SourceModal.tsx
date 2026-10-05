@@ -18,11 +18,13 @@ export function SourceModal({
   citations,
   initialIndex,
   pdfUrl,
+  primaryLanguage = 'en',
   onClose,
 }: {
   citations: Citation[];
   initialIndex: number;
   pdfUrl: string | null;
+  primaryLanguage?: 'fa' | 'en';
   onClose: () => void;
 }) {
   const [index, setIndex] = useState(initialIndex);
@@ -100,6 +102,7 @@ export function SourceModal({
               if (i >= 0) setIndex(i);
             }}
             highlightSnippet={snippet}
+            primaryLanguage={primaryLanguage}
           />
         </div>
 
