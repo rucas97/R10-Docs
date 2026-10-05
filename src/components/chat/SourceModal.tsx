@@ -1,8 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, ChevronRight, ChevronLeft, FileText } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { X, ChevronRight, ChevronLeft, FileText, Loader2 } from 'lucide-react';
 import { toPersianNumber } from '@/lib/citations';
+
+const PdfViewerInner = dynamic(() => import('./PdfViewerInner'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex-1 flex items-center justify-center">
+      <Loader2 className="w-6 h-6 animate-spin text-brand-500" />
+    </div>
+  ),
+});
 
 export function SourceModal({
   pages,
@@ -18,7 +28,6 @@ export function SourceModal({
   const [index, setIndex] = useState(initialIndex);
   const page = pages[index];
 
-  // Esc to close
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -33,14 +42,11 @@ export function SourceModal({
     };
   }, [index, pages.length, onClose]);
 
-  // Build iframe URL with page fragment — works in every modern browser
-  const iframeSrc = pdfUrl ? `${pdfUrl}#page=${page}&zoom=page-width&toolbar=0` : null;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6" dir="rtl">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full max-w-4xl h-[90vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="relative w-full max-w-4xl h-[92vh] sm:h-[88vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
         <div className="h-14 shrink-0 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
@@ -56,13 +62,11 @@ export function SourceModal({
               </p>
             </div>
           </div>
-
           <div className="flex items-center gap-1">
             <button
               onClick={() => setIndex((i) => Math.max(0, i - 1))}
               disabled={index === 0}
               className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-30 transition"
-              title="منبع قبلی"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -70,34 +74,29 @@ export function SourceModal({
               onClick={() => setIndex((i) => Math.min(pages.length - 1, i + 1))}
               disabled={index === pages.length - 1}
               className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-30 transition"
-              title="منبع بعدی"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={onClose}
-              className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 transition"
-              title="بستن"
+              className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-500 hover:text-rose-600 dark:text-slate-400 transition"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-hidden bg-slate-100 dark:bg-slate-950 relative">
-          {iframeSrc ? (
-            <iframe
-              key={page}
-              src={iframeSrc}
-              className="w-full h-full border-0"
-              title={`صفحه ${page}`}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full text-xs text-slate-400 dark:text-slate-500">
-              فایل PDF در دسترس نیست.
-            </div>
-          )}
+        {/* Body — uses the same client-side PDF renderer */}
+        <div className="flex-1 overflow-hidden bg-slate-200 dark:bg-slate-950">
+          <PdfViewerInner
+            pdfUrl={pdfUrl}
+            pageCount={Math.max(...pages)}
+            currentPage={page}
+            onPageChange={(p) => {
+              const i = pages.indexOf(p);
+              if (i >= 0) setIndex(i);
+            }}
+          />
         </div>
 
         {/* Page switcher strip */}
