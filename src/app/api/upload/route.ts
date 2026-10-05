@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { genAI } from '@/lib/gemini';
+import { generateWithFallback } from '@/lib/gemini';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -14,26 +14,21 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
     if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 });
-    if (file.type !== 'application/pdf') {
-      return NextResponse.json({ error: 'Only PDF allowed' }, { status: 400 });
-    }
+    if (file.type !== 'application/pdf') return NextResponse.json({ error: 'Only PDF allowed' }, { status: 400 });
 
     const bytes = await file.arrayBuffer();
     const uint8 = new Uint8Array(bytes);
 
-    // Extract text per page
     const { extractText, getDocumentProxy } = await import('unpdf');
     const pdf = await getDocumentProxy(uint8);
 
     let pageTexts: string[] = [];
     let totalPages = 0;
-
     try {
       const { text } = await extractText(pdf, { mergePages: false });
       pageTexts = Array.isArray(text) ? (text as string[]) : [String(text)];
       totalPages = pageTexts.length;
     } catch {
-      // Fallback: merged text only
       const { text, totalPages: tp } = await extractText(pdf, { mergePages: true });
       pageTexts = [String(text)];
       totalPages = tp;
@@ -41,7 +36,6 @@ export async function POST(req: NextRequest) {
 
     const documentText = pageTexts.join('\n\n---\n\n').slice(0, 200_000);
 
-    // Create chat row
     const { data: chat, error: insertErr } = await supabase
       .from('chats')
       .insert({
@@ -58,30 +52,33 @@ export async function POST(req: NextRequest) {
     if (insertErr || !chat) throw new Error(insertErr?.message || 'Insert failed');
     const chatId = chat.id;
 
-    // Upload PDF to storage
+    // Upload PDF
     const filePath = `${user.id}/${chatId}.pdf`;
     const { error: upErr } = await supabase.storage
       .from('pdfs')
       .upload(filePath, uint8, { contentType: 'application/pdf', upsert: true });
 
-    if (!upErr) {
-      await supabase.from('chats').update({ file_path: filePath }).eq('id', chatId);
-    } else {
+    if (upErr) {
       console.error('[upload] storage error:', upErr.message);
+    } else {
+      await supabase.from('chats').update({ file_path: filePath }).eq('id', chatId);
     }
 
-    // Generate Persian summary
+    // Summary with model fallback
     let summary = '';
+    let summaryModel = '';
     try {
       const excerpt = documentText.slice(0, 15_000);
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-      const result = await model.generateContent(
-        'این سند را در یک پاراگراف کوتاه (حداکثر ۳ جمله) به فارسی خلاصه کن. ' +
-        'فقط خود خلاصه را بنویس، بدون مقدمه یا عنوان:\n\n' + excerpt
-      );
-      summary = result.response.text().trim();
+      const { text, model } = await generateWithFallback({
+        prompt:
+          'این سند را در یک پاراگراف کوتاه (حداکثر ۳ جمله) به فارسی خلاصه کن. ' +
+          'فقط خود خلاصه را بنویس، بدون مقدمه یا عنوان:\n\n' + excerpt,
+      });
+      summary = text;
+      summaryModel = model;
+      console.log('[upload] summary via', model);
     } catch (e: any) {
-      console.warn('[upload] summary failed:', e.message);
+      console.warn('[upload] summary failed:', e?.message);
       summary = 'خلاصه‌ای در دسترس نیست. می‌توانید سوالات خود را بپرسید.';
     }
 
@@ -93,7 +90,7 @@ export async function POST(req: NextRequest) {
       content: `سند «${file.name}» (${totalPages} صفحه) بررسی شد. هر سؤالی دارید بپرسید.`,
     });
 
-    return NextResponse.json({ chatId, pageCount: totalPages, summary });
+    return NextResponse.json({ chatId, pageCount: totalPages, summary, model: summaryModel });
   } catch (error: any) {
     console.error('[upload] error:', error);
     return NextResponse.json({ error: error.message || 'Upload failed' }, { status: 500 });

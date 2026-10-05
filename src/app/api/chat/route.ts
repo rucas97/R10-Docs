@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { genAI } from '@/lib/gemini';
+import { sendWithFallback } from '@/lib/gemini';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-function friendlyError(status: number, message: string): string {
+function friendlyError(message: string): string {
   const msg = (message || '').toLowerCase();
-  if (status === 404 || msg.includes('not found')) return 'در حال حاضر امکان پاسخ‌دهی نیست. کمی بعد تلاش کنید.';
-  if (status === 429 || msg.includes('quota') || msg.includes('rate')) return 'تعداد درخواست‌ها زیاد شده است. چند لحظه صبر کنید.';
-  if (msg.includes('fetch failed') || msg.includes('network')) return 'ارتباط با سرور برقرار نشد. لطفاً اتصال اینترنت خود را بررسی کنید.';
+  if (msg.includes('overloaded') || msg.includes('503') || msg.includes('high demand')) {
+    return 'سرویس هوش مصنوعی در این لحظه شلوغ است. لطفاً چند لحظه صبر کنید و دوباره بپرسید.';
+  }
+  if (msg.includes('429') || msg.includes('quota') || msg.includes('rate')) {
+    return 'تعداد درخواست‌ها زیاد شده است. چند لحظه صبر کنید.';
+  }
+  if (msg.includes('fetch failed') || msg.includes('network')) {
+    return 'ارتباط با سرور برقرار نشد. لطفاً اتصال اینترنت خود را بررسی کنید.';
+  }
+  if (msg.includes('all gemini models failed')) {
+    return 'در حال حاضر امکان پاسخ‌دهی نیست. لطفاً بعداً دوباره تلاش کنید.';
+  }
   return 'خطایی از سمت ما رخ داد. لطفاً دوباره تلاش کنید.';
 }
 
@@ -27,7 +36,6 @@ export async function POST(req: NextRequest) {
       .select('id, document_text, summary, page_texts')
       .eq('id', chatId)
       .single();
-
     if (!chat) return NextResponse.json({ error: 'Chat not found' }, { status: 404 });
 
     const pageTexts: string[] = Array.isArray(chat.page_texts) ? (chat.page_texts as string[]) : [];
@@ -50,11 +58,6 @@ export async function POST(req: NextRequest) {
       '  - نقل قول حتماً باید کلمه‌به‌کلمه از متن همان صفحه باشد\n' +
       '  - اگر پاسخی در سند نبود، این خط را ننویسید.';
 
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-3.5-flash',
-      systemInstruction: systemPrompt,
-    });
-
     const lastMessage = messages[messages.length - 1];
     await supabase.from('messages').insert({
       chat_id: chatId,
@@ -74,17 +77,30 @@ export async function POST(req: NextRequest) {
       cleanHistory.push({ role, parts: [{ text }] });
     }
 
-    const geminiChat = model.startChat({ history: cleanHistory });
-    const result = await geminiChat.sendMessageStream(lastMessage.content);
+    let stream: AsyncIterable<any>;
+    let usedModel = 'unknown';
+    try {
+      const r = await sendWithFallback({
+        systemInstruction: systemPrompt,
+        history: cleanHistory,
+        message: lastMessage.content,
+      });
+      stream = r.stream;
+      usedModel = r.model;
+    } catch (e: any) {
+      console.error('[chat] all models failed:', e?.message);
+      return NextResponse.json({ error: friendlyError(e?.message ?? '') }, { status: 200 });
+    }
 
     const encoder = new TextEncoder();
     let assistantFull = '';
 
-    const stream = new ReadableStream({
+    const webStream = new ReadableStream({
       async start(controller) {
         try {
-          for await (const chunk of result.stream) {
-            const t = chunk.text();
+          for await (const chunk of stream) {
+            const t = chunk.text?.() ?? '';
+            if (!t) continue;
             assistantFull += t;
             controller.enqueue(encoder.encode(t));
           }
@@ -97,18 +113,19 @@ export async function POST(req: NextRequest) {
           });
           await supabase.from('chats').update({ updated_at: new Date().toISOString() }).eq('id', chatId);
         } catch (error: any) {
-          const friendly = friendlyError(error?.status ?? 500, error?.message ?? '');
+          const friendly = friendlyError(error?.message ?? '');
           controller.enqueue(encoder.encode('\n\n' + friendly));
           controller.close();
         }
       },
     });
 
-    return new NextResponse(stream, {
+    console.log('[chat] streaming via', usedModel);
+    return new NextResponse(webStream, {
       headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Transfer-Encoding': 'chunked' },
     });
   } catch (error: any) {
     console.error('[chat] error:', error);
-    return NextResponse.json({ error: friendlyError(500, error?.message ?? '') }, { status: 500 });
+    return NextResponse.json({ error: friendlyError(error?.message ?? '') }, { status: 500 });
   }
 }
