@@ -3,21 +3,23 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ChevronRight, ChevronLeft, ExternalLink, FileText,
-  Loader2, AlertCircle, ZoomIn, ZoomOut,
+  Loader2, AlertCircle, ZoomIn, ZoomOut, RefreshCw,
 } from 'lucide-react';
 import { toPersianNumber } from '@/lib/citations';
 
-type Props = {
+export default function PdfViewerInner({
+  pdfUrl,
+  pageCount,
+  currentPage,
+  onPageChange,
+  highlightSnippet = '',
+}: {
   pdfUrl: string | null;
   pageCount: number;
   currentPage: number;
   onPageChange: (p: number) => void;
   highlightSnippet?: string;
-};
-
-export default function PdfViewerInner({
-  pdfUrl, pageCount, currentPage, onPageChange, highlightSnippet = '',
-}: Props) {
+}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const pdfDocRef = useRef<any>(null);
@@ -28,8 +30,9 @@ export default function PdfViewerInner({
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
+  const [renderKey, setRenderKey] = useState(0);
 
-  // Load the PDF once
+  // Load PDF
   useEffect(() => {
     if (!pdfUrl) return;
     let cancelled = false;
@@ -38,40 +41,37 @@ export default function PdfViewerInner({
       try {
         setLoading(true);
         setError(null);
+        console.log('[pdf] loading from', pdfUrl);
 
-        // Fetch as blob first so we can show meaningful HTTP errors
-        console.log('[pdf] fetching', pdfUrl);
         const res = await fetch(pdfUrl);
-        console.log('[pdf] fetch status:', res.status, res.headers.get('content-type'));
+        console.log('[pdf] fetch status:', res.status, 'content-type:', res.headers.get('content-type'));
         if (!res.ok) {
-          let detail = '';
-          try { detail = await res.text(); } catch {}
+          const detail = await res.text().catch(() => '');
           console.error('[pdf] server error body:', detail);
-          const map: Record<number, string> = {
-            401: 'دسترسی به فایل مجاز نیست. لطفاً صفحه را دوباره بارگذاری کنید.',
-            403: 'دسترسی به فایل مجاز نیست.',
-            404: 'فایل PDF در سرور پیدا نشد. لطفاً دوباره آپلود کنید.',
-            500: 'فایل در سرور موجود نیست. لطفاً سند را دوباره آپلود کنید.',
-          };
-          const base = map[res.status] || `خطا در دریافت فایل (${res.status})`;
-          throw new Error(detail ? `${base}\n${detail}` : base);
+          throw new Error(detail || `خطای سرور (${res.status})`);
         }
         const arrayBuffer = await res.arrayBuffer();
         console.log('[pdf] downloaded bytes:', arrayBuffer.byteLength);
         if (arrayBuffer.byteLength === 0) {
-          throw new Error('فایل PDF خالی است یا به‌درستی آپلود نشده است.');
+          throw new Error('فایل PDF خالی است.');
         }
 
         const pdfjsLib: any = await import('pdfjs-dist');
+        console.log('[pdf] pdfjs version:', pdfjsLib.version);
         pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
-        const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        if (cancelled) return;
+        const doc = await pdfjsLib.getDocument({
+          data: arrayBuffer,
+          cMapUrl: '/pdfjs/cmaps/',
+          cMapPacked: true,
+          standardFontDataUrl: '/pdfjs/standard_fonts/',
+        }).promise;
 
+        if (cancelled) return;
         pdfDocRef.current = doc;
         setNumPages(doc.numPages);
         setLoading(false);
-        console.log('[pdf] loaded, pages:', doc.numPages);
+        console.log('[pdf] ✅ loaded', doc.numPages, 'pages');
       } catch (e: any) {
         if (cancelled) return;
         console.error('[pdf] load error:', e);
@@ -89,9 +89,17 @@ export default function PdfViewerInner({
     };
   }, [pdfUrl]);
 
-  // Render the current page + highlight the snippet
+  // Render current page
   useEffect(() => {
-    if (!pdfDocRef.current || !canvasRef.current) return;
+    if (loading) return;
+    if (!pdfDocRef.current) {
+      console.log('[pdf] render skipped: no doc yet');
+      return;
+    }
+    if (!canvasRef.current) {
+      console.log('[pdf] render skipped: canvas not in DOM yet');
+      return;
+    }
     if (renderingRef.current) return;
 
     let cancelled = false;
@@ -100,35 +108,75 @@ export default function PdfViewerInner({
       try {
         renderingRef.current = true;
         setRendering(true);
+        console.log('[pdf] render start: page', currentPage, 'zoom', zoom);
 
-        const pdfjsLib: any = await import('pdfjs-dist');
         const doc = pdfDocRef.current;
         const page = await doc.getPage(currentPage);
         if (cancelled) return;
 
+        // Compute scale
         const containerWidth = containerRef.current?.clientWidth ?? 800;
         const unscaled = page.getViewport({ scale: 1 });
         const fitScale = Math.max(0.4, (containerWidth - 32) / unscaled.width);
         const scale = fitScale * zoom;
         const viewport = page.getViewport({ scale });
 
+        console.log('[pdf] container width:', containerWidth,
+                    'unscaled width:', unscaled.width,
+                    'fit scale:', fitScale,
+                    'final scale:', scale,
+                    'viewport:', viewport.width, 'x', viewport.height);
+
         const canvas = canvasRef.current;
         if (!canvas) return;
 
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = viewport.width * dpr;
-        canvas.height = viewport.height * dpr;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2); // cap at 2 to avoid huge canvases
+        canvas.width = Math.floor(viewport.width * dpr);
+        canvas.height = Math.floor(viewport.height * dpr);
         canvas.style.width = `${viewport.width}px`;
         canvas.style.height = `${viewport.height}px`;
+        canvas.style.background = 'white';
 
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+        console.log('[pdf] canvas set to', canvas.width, 'x', canvas.height, 'dpr', dpr);
+
+        const ctx = canvas.getContext('2d', { alpha: false });
+        if (!ctx) {
+          throw new Error('canvas 2d context unavailable');
+        }
+
+        // Fill with white first (some PDFs render with transparent backgrounds)
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-        await page.render({ canvasContext: ctx, viewport }).promise;
-        if (cancelled) return;
+        await page.render({
+          canvasContext: ctx,
+          viewport,
+          intent: 'display',
+        }).promise;
 
-        // Highlight snippet if provided
+        if (cancelled) return;
+        console.log('[pdf] ✅ render complete for page', currentPage);
+
+        // Blank-canvas detection: sample a handful of pixels
+        try {
+          const sample = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+          let nonWhite = 0;
+          // sample every ~1000th pixel
+          for (let i = 0; i < sample.length; i += 4000) {
+            const r = sample[i], g = sample[i + 1], b = sample[i + 2];
+            if (r < 240 || g < 240 || b < 240) nonWhite++;
+          }
+          console.log('[pdf] non-white samples:', nonWhite);
+          if (nonWhite < 5) {
+            console.warn('[pdf] ⚠️ canvas looks mostly blank — CMaps or fonts may be missing');
+            setError('صفحه سفید رندر شد. احتمالاً فایل شامل فونت‌های خاص است.');
+          }
+        } catch (e) {
+          console.warn('[pdf] pixel sampling failed (may be cross-origin):', e);
+        }
+
+        // Highlight snippet
         if (highlightSnippet && highlightSnippet.trim().length > 3) {
           try {
             const textContent = await page.getTextContent();
@@ -147,8 +195,6 @@ export default function PdfViewerInner({
             console.warn('[pdf] highlight failed:', he);
           }
         }
-
-        console.log('[pdf] rendered page', currentPage);
       } catch (e: any) {
         if (cancelled) return;
         console.error('[pdf] render error:', e);
@@ -160,7 +206,7 @@ export default function PdfViewerInner({
     })();
 
     return () => { cancelled = true; };
-  }, [currentPage, zoom, numPages, highlightSnippet]);
+  }, [currentPage, zoom, numPages, highlightSnippet, loading, renderKey]);
 
   if (!pdfUrl) {
     return (
@@ -190,6 +236,10 @@ export default function PdfViewerInner({
             className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 disabled:opacity-30 transition">
             <ZoomIn className="w-4 h-4" />
           </button>
+          <button onClick={() => setRenderKey((k) => k + 1)} title="رندر مجدد"
+            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition">
+            <RefreshCw className="w-4 h-4" />
+          </button>
           <button onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage <= 1}
             className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 disabled:opacity-30 transition">
             <ChevronRight className="w-4 h-4" />
@@ -206,17 +256,23 @@ export default function PdfViewerInner({
       </div>
 
       <div ref={containerRef} className="flex-1 overflow-auto bg-slate-200 dark:bg-slate-950 p-3 sm:p-4 flex justify-center items-start">
-        {error ? (
+        {error && !rendering ? (
           <div className="flex flex-col items-center justify-center py-12 text-center px-6 max-w-sm">
             <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-500 flex items-center justify-center mb-3">
               <AlertCircle className="w-6 h-6" />
             </div>
             <p className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-1">نمایش سند ممکن نشد</p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-4" dir="rtl">{error}</p>
-            <a href={pdfUrl} target="_blank" rel="noreferrer"
-              className="text-xs px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold transition">
-              دانلود فایل
-            </a>
+            <div className="flex gap-2">
+              <button onClick={() => { setError(null); setRenderKey((k) => k + 1); }}
+                className="text-xs px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold transition">
+                تلاش مجدد
+              </button>
+              <a href={pdfUrl} target="_blank" rel="noreferrer"
+                className="text-xs px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold transition">
+                دانلود فایل
+              </a>
+            </div>
           </div>
         ) : loading ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
@@ -225,9 +281,9 @@ export default function PdfViewerInner({
           </div>
         ) : (
           <div className="relative">
-            <canvas ref={canvasRef} className="shadow-lg rounded-lg overflow-hidden bg-white" />
+            <canvas ref={canvasRef} className="shadow-lg rounded-lg overflow-hidden" />
             {rendering && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/40 dark:bg-slate-900/40 rounded-lg backdrop-blur-[1px]">
+              <div className="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-slate-900/60 rounded-lg backdrop-blur-[1px]">
                 <Loader2 className="w-5 h-5 animate-spin text-brand-500" />
               </div>
             )}
@@ -238,7 +294,6 @@ export default function PdfViewerInner({
   );
 }
 
-// Find rectangles for text items whose combined line matches the snippet.
 function findHighlightRects(
   items: any[],
   snippet: string,
@@ -254,7 +309,6 @@ function findHighlightRects(
     .filter((w) => w.length >= 3);
   if (snippetWords.length === 0) return [];
 
-  // Position each text item using its transform matrix
   type Item = { str: string; x: number; y: number; w: number; h: number };
   const positioned: Item[] = items
     .filter((it: any) => it.str && it.str.trim().length > 0)
@@ -270,7 +324,6 @@ function findHighlightRects(
       };
     });
 
-  // Group into lines by Y (bucket rounded to 4 px)
   const lines = new Map<number, Item[]>();
   for (const it of positioned) {
     const key = Math.round(it.y / 4) * 4;
