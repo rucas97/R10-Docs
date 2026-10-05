@@ -7,6 +7,24 @@ import {
 } from 'lucide-react';
 import { toPersianNumber } from '@/lib/citations';
 
+// Module-level pdfjs handle — loaded once, shared across effects and helpers.
+let pdfjsLib: any = null;
+let pdfjsPromise: Promise<any> | null = null;
+
+async function loadPdfJs(): Promise<any> {
+  if (pdfjsLib) return pdfjsLib;
+  if (!pdfjsPromise) {
+    pdfjsPromise = (async () => {
+      const lib: any = await import('pdfjs-dist');
+      lib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+      pdfjsLib = lib;
+      console.log('[pdf] pdfjs version:', lib.version);
+      return lib;
+    })();
+  }
+  return pdfjsPromise;
+}
+
 export default function PdfViewerInner({
   pdfUrl,
   pageCount,
@@ -56,11 +74,9 @@ export default function PdfViewerInner({
           throw new Error('فایل PDF خالی است.');
         }
 
-        const pdfjsLib: any = await import('pdfjs-dist');
-        console.log('[pdf] pdfjs version:', pdfjsLib.version);
-        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+        const lib = await loadPdfJs();
 
-        const doc = await pdfjsLib.getDocument({
+        const doc = await lib.getDocument({
           data: arrayBuffer,
           cMapUrl: '/pdfjs/cmaps/',
           cMapPacked: true,
@@ -180,7 +196,8 @@ export default function PdfViewerInner({
         if (highlightSnippet && highlightSnippet.trim().length > 3) {
           try {
             const textContent = await page.getTextContent();
-            const rects = findHighlightRects(textContent.items, highlightSnippet, viewport, pdfjsLib);
+            const lib = await loadPdfJs();
+            const rects = findHighlightRects(textContent.items, highlightSnippet, viewport, lib);
             if (rects.length > 0) {
               ctx.fillStyle = 'rgba(251, 191, 36, 0.35)';
               ctx.strokeStyle = 'rgba(217, 119, 6, 0.65)';
