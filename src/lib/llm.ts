@@ -9,12 +9,11 @@ const groq = groqKey ? new Groq({ apiKey: groqKey }) : null;
 
 type Provider = { name: string; kind: 'gemini' | 'groq'; model: string };
 
-// Gemini first (better Farsi quality), Groq as fallback (much larger free quota)
 const CHAIN: Provider[] = [
-  { name: 'gemini-2.5-flash', kind: 'gemini', model: 'gemini-2.5-flash' },
-  { name: 'gemini-2.0-flash-lite', kind: 'gemini', model: 'gemini-2.0-flash-lite' },
-  { name: 'groq-llama-3.3-70b', kind: 'groq', model: 'llama-3.3-70b-versatile' },
-  { name: 'groq-llama-3.1-8b', kind: 'groq', model: 'llama-3.1-8b-instant' },
+  { name: 'gemini-3.5-flash',      kind: 'gemini', model: 'gemini-3.5-flash' },
+  { name: 'gemini-3.1-flash-lite', kind: 'gemini', model: 'gemini-3.1-flash-lite' },
+  { name: 'groq-gpt-oss-120b',     kind: 'groq',   model: 'openai/gpt-oss-120b' },
+  { name: 'groq-gpt-oss-20b',      kind: 'groq',   model: 'openai/gpt-oss-20b' },
 ];
 
 let stickyProvider: string | null = null;
@@ -48,6 +47,16 @@ function isOverload(err: any): boolean {
   if ([500, 502, 503, 504].includes(s)) return true;
   const m = String(err?.message || '').toLowerCase();
   return m.includes('overloaded') || m.includes('unavailable') || m.includes('high demand') || m.includes('timeout');
+}
+function isRetired(err: any): boolean {
+  const m = String(err?.message || '').toLowerCase();
+  return (
+    m.includes('no longer available') ||
+    m.includes('does not exist') ||
+    m.includes('not found') ||
+    m.includes('deprecated') ||
+    m.includes('decommissioned')
+  );
 }
 
 type NeutralMsg = { role: 'user' | 'assistant'; content: string };
@@ -98,26 +107,17 @@ async function* streamFrom(p: Provider, o: StreamOpts): AsyncIterable<string> {
   else yield* streamGroq(p, o);
 }
 
-/**
- * Stream with provider fallback. Peeks first chunk to catch early failures.
- */
 export async function streamChat(o: StreamOpts): Promise<{ stream: AsyncIterable<string>; provider: string }> {
   const errors: string[] = [];
-
   for (const p of getOrdered()) {
-    if (isCoolingDown(p.name)) {
-      console.log(`[llm] skip ${p.name} (cooling)`);
-      continue;
-    }
+    if (isCoolingDown(p.name)) { console.log(`[llm] skip ${p.name} (cooling)`); continue; }
     try {
       console.log(`[llm] trying ${p.name}`);
       const gen = streamFrom(p, o);
       const it = gen[Symbol.asyncIterator]();
       const first = await it.next();
-
       stickyProvider = p.name;
       console.log(`[llm] ✅ ${p.name}`);
-
       const wrapped = (async function* () {
         if (!first.done) yield first.value;
         while (true) {
@@ -126,16 +126,14 @@ export async function streamChat(o: StreamOpts): Promise<{ stream: AsyncIterable
           yield n.value;
         }
       })();
-
       return { stream: wrapped, provider: p.name };
     } catch (err: any) {
-      if (isRateLimit(err)) markCooldown(p.name);
-      const tag = isRateLimit(err) ? '429' : isOverload(err) ? '503' : 'err';
-      console.warn(`[llm] ${p.name} ${tag}:`, err?.message?.slice(0, 120));
+      const tag = isRetired(err) ? 'retired' : isRateLimit(err) ? '429' : isOverload(err) ? '503' : 'err';
+      if (isRateLimit(err) || isRetired(err)) markCooldown(p.name);
+      console.warn(`[llm] ${p.name} ${tag}:`, err?.message?.slice(0, 140));
       errors.push(`${p.name}:${tag}`);
     }
   }
-
   throw new Error(`All providers failed (${errors.join('; ') || 'none'})`);
 }
 
@@ -166,6 +164,9 @@ async function genGroq(p: Provider, o: GenOpts): Promise<string> {
   return r.choices?.[0]?.message?.content?.trim() ?? '';
 }
 
+/**
+ * Single pass through the provider chain.
+ */
 export async function generateText(o: GenOpts): Promise<{ text: string; provider: string }> {
   const errors: string[] = [];
   for (const p of getOrdered()) {
@@ -177,11 +178,48 @@ export async function generateText(o: GenOpts): Promise<{ text: string; provider
       console.log(`[llm] ✅ ${p.name}`);
       return { text, provider: p.name };
     } catch (err: any) {
-      if (isRateLimit(err)) markCooldown(p.name);
-      const tag = isRateLimit(err) ? '429' : isOverload(err) ? '503' : 'err';
-      console.warn(`[llm] ${p.name} ${tag}:`, err?.message?.slice(0, 120));
+      const tag = isRetired(err) ? 'retired' : isRateLimit(err) ? '429' : isOverload(err) ? '503' : 'err';
+      if (isRateLimit(err) || isRetired(err)) markCooldown(p.name);
+      console.warn(`[llm] ${p.name} ${tag}:`, err?.message?.slice(0, 140));
       errors.push(`${p.name}:${tag}`);
     }
   }
   throw new Error(`All providers failed (${errors.join('; ') || 'none'})`);
+}
+
+/**
+ * Aggressive retry for BLOCKING calls (summary generation).
+ * Repeats the full provider chain up to `maxRounds` times with exponential backoff,
+ * clearing cooldowns between rounds so a transient 429 doesn't permanently block.
+ * Throws if every round fails — callers must treat this as a hard failure.
+ */
+export async function generateTextWithRetry(
+  o: GenOpts,
+  maxRounds = 4
+): Promise<{ text: string; provider: string }> {
+  let lastErr: any = null;
+
+  for (let round = 0; round < maxRounds; round++) {
+    if (round > 0) {
+      const wait = 2000 * round; // 2s, 4s, 6s
+      console.log(`[llm] summary round ${round + 1}/${maxRounds} after ${wait}ms wait`);
+      // Clear cooldowns so preferred providers get another shot
+      cooldownUntil.clear();
+      stickyProvider = null;
+      await new Promise((r) => setTimeout(r, wait));
+    }
+    try {
+      console.log(`[llm] summary round ${round + 1}/${maxRounds}`);
+      const res = await generateText(o);
+      if (res.text && res.text.length >= 20) {
+        return res;
+      }
+      console.warn(`[llm] summary too short (${res.text?.length ?? 0} chars), retrying`);
+      lastErr = new Error('Summary too short');
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+
+  throw lastErr ?? new Error('Summary generation failed after all rounds');
 }

@@ -11,6 +11,7 @@ import { extractCitations, toPersianNumber, type Citation } from '@/lib/citation
 import { SourceModal } from './SourceModal';
 import { PdfViewer } from './PdfViewer';
 import { ChatInput } from './ChatInput';
+import { SummaryCard } from './SummaryCard';
 
 type Msg = { id: string; role: 'user' | 'assistant'; content: string };
 type ChatMeta = { id: string; title: string; fileName: string; pageCount: number; summary: string };
@@ -107,7 +108,6 @@ export function ChatPanel({
   const router = useRouter();
   const [messages, setMessages] = useState<Msg[]>(initialMessages);
   const [streaming, setStreaming] = useState(false);
-  const [summaryOpen, setSummaryOpen] = useState(true);
   const [viewMode, setViewMode] = useState<'chat' | 'reader'>('chat');
   const [currentPage, setCurrentPage] = useState(1);
   const [modal, setModal] = useState<{ citations: Citation[]; index: number } | null>(null);
@@ -180,21 +180,7 @@ export function ChatPanel({
         </div>
       </div>
 
-      {chat.summary && summaryOpen && (
-        <div className="mx-4 mt-4 p-4 rounded-2xl bg-gradient-to-l from-brand-50 to-indigo-50 dark:from-brand-950/40 dark:to-indigo-950/40 border border-brand-100 dark:border-brand-900 relative shrink-0">
-          <button onClick={() => setSummaryOpen(false)}
-            className="absolute top-2 left-2 w-6 h-6 rounded-lg flex items-center justify-center text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/50 transition">
-            <X className="w-3.5 h-3.5" />
-          </button>
-          <div className="flex items-start gap-2.5 pl-6">
-            <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-[11px] font-black text-brand-700 dark:text-brand-300 mb-1">خلاصه سند</p>
-              <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-200">{chat.summary}</p>
-            </div>
-          </div>
-        </div>
-      )}
+      {<SummaryCard chatId={chat.id} summary={chat.summary} />}
 
       <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-6">
         <div className="max-w-3xl mx-auto space-y-6">

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { generateText } from '@/lib/llm';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -36,6 +35,7 @@ export async function POST(req: NextRequest) {
 
     const documentText = pageTexts.join('\n\n---\n\n').slice(0, 200_000);
 
+    // Create chat WITHOUT summary — /api/summarize will fill it in
     const { data: chat, error: insertErr } = await supabase
       .from('chats')
       .insert({
@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
         page_count: totalPages,
         document_text: documentText,
         page_texts: pageTexts,
+        summary: null,
       })
       .select('id')
       .single();
@@ -52,7 +53,6 @@ export async function POST(req: NextRequest) {
     if (insertErr || !chat) throw new Error(insertErr?.message || 'Insert failed');
     const chatId = chat.id;
 
-    // Upload PDF
     const filePath = `${user.id}/${chatId}.pdf`;
     const { error: upErr } = await supabase.storage
       .from('pdfs')
@@ -64,33 +64,14 @@ export async function POST(req: NextRequest) {
       await supabase.from('chats').update({ file_path: filePath }).eq('id', chatId);
     }
 
-    // Summary with model fallback
-    let summary = '';
-    let summaryModel = '';
-    try {
-      const excerpt = documentText.slice(0, 15_000);
-      const { text, provider: model } = await generateText({
-        prompt:
-          'این سند را در یک پاراگراف کوتاه (حداکثر ۳ جمله) به فارسی خلاصه کن. ' +
-          'فقط خود خلاصه را بنویس، بدون مقدمه یا عنوان:\n\n' + excerpt,
-      });
-      summary = text;
-      summaryModel = model;
-      console.log('[upload] summary via', model);
-    } catch (e: any) {
-      console.warn('[upload] summary failed:', e?.message);
-      summary = 'خلاصه‌ای در دسترس نیست. می‌توانید سوالات خود را بپرسید.';
-    }
-
-    await supabase.from('chats').update({ summary }).eq('id', chatId);
-
+    // Welcome message — will be followed by summary on success
     await supabase.from('messages').insert({
       chat_id: chatId,
       role: 'assistant',
       content: `سند «${file.name}» (${totalPages} صفحه) بررسی شد. هر سؤالی دارید بپرسید.`,
     });
 
-    return NextResponse.json({ chatId, pageCount: totalPages, summary, model: summaryModel });
+    return NextResponse.json({ chatId, pageCount: totalPages });
   } catch (error: any) {
     console.error('[upload] error:', error);
     return NextResponse.json({ error: error.message || 'Upload failed' }, { status: 500 });
