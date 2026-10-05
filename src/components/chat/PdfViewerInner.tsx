@@ -148,7 +148,7 @@ export default function PdfViewerInner({
         const canvas = canvasRef.current;
         if (!canvas) return;
 
-        const dpr = Math.min(window.devicePixelRatio || 1, 2); // cap at 2 to avoid huge canvases
+        const dpr = Math.min(window.devicePixelRatio || 1, 3); // crisp on retina, capped at 3
         canvas.width = Math.floor(viewport.width * dpr);
         canvas.height = Math.floor(viewport.height * dpr);
         canvas.style.width = `${viewport.width}px`;

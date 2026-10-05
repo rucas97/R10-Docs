@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Plus, MessageSquare, LogOut, Loader2, Trash2, Pin, PinOff } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 type Chat = {
   id: string;
@@ -179,6 +180,7 @@ export function Sidebar({
           <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate flex-1" dir="ltr">
             {user.email}
           </span>
+          <ThemeToggle />
         </div>
         <button
           onClick={handleSignOut}

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Menu, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { Sidebar } from './Sidebar';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 type Chat = {
   id: string;
@@ -44,6 +45,7 @@ export function AppShell({
       )}
 
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* Top bar — mobile menu + theme toggle (visible everywhere) */}
         <div className="lg:hidden h-14 flex items-center justify-between px-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
           <button
             onClick={() => setDrawerOpen(true)}
@@ -58,7 +60,12 @@ export function AppShell({
             </div>
             <span className="font-black text-sm text-slate-900 dark:text-white">R10-Docs</span>
           </Link>
-          <div className="w-10" />
+          <ThemeToggle />
+        </div>
+
+        {/* Desktop top bar — theme toggle only (sidebar has the rest) */}
+        <div className="hidden lg:flex h-12 items-center justify-end px-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+          <ThemeToggle />
         </div>
 
         {children}
