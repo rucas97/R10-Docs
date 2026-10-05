@@ -1,43 +1,39 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import {
-  ChevronRight, ChevronLeft, ExternalLink, FileText,
-  Loader2, AlertCircle, ZoomIn, ZoomOut, RefreshCw,
-} from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { ChevronRight, ChevronLeft, ExternalLink, FileText } from 'lucide-react';
 import { toPersianNumber } from '@/lib/citations';
 
 export default function PdfViewerInner({
   pdfUrl,
-  chatId,
   pageCount,
   currentPage,
   onPageChange,
-  primaryLanguage = 'en',
   highlightSnippet = '',
 }: {
   pdfUrl: string | null;
-  chatId: string;
   pageCount: number;
   currentPage: number;
   onPageChange: (p: number) => void;
   primaryLanguage?: 'fa' | 'en';
   highlightSnippet?: string;
 }) {
-  const [numPages, setNumPages] = useState(pageCount || 0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [zoom, setZoom] = useState(1);
-  const [renderKey, setRenderKey] = useState(0);
-  const [usingFallback, setUsingFallback] = useState(false);
+  const [zoomPct, setZoomPct] = useState(100);
 
-  // Server-rendered image URL
-  const serverImgUrl = `/api/pdf-page/${chatId}/${currentPage}?z=${zoom}&r=${renderKey}`;
-
-  useEffect(() => {
-    setNumPages(pageCount || 0);
-    setLoading(false);
-  }, [pageCount]);
+  // Build the iframe URL with browser-native PDF viewer parameters.
+  // Supported by Chrome, Edge, Brave, Opera, and Chromium-based browsers.
+  // Safari/Firefox honor #page and #zoom; #search is Chrome/Edge only.
+  const iframeSrc = useMemo(() => {
+    if (!pdfUrl) return '';
+    const hash = new URLSearchParams();
+    hash.set('page', String(currentPage));
+    hash.set('zoom', String(zoomPct));
+    hash.set('toolbar', '1');
+    if (highlightSnippet && highlightSnippet.trim().length > 3) {
+      hash.set('search', highlightSnippet.trim().slice(0, 200));
+    }
+    return `${pdfUrl}#${hash.toString()}`;
+  }, [pdfUrl, currentPage, zoomPct, highlightSnippet]);
 
   if (!pdfUrl) {
     return (
@@ -56,91 +52,62 @@ export default function PdfViewerInner({
             <FileText className="w-3.5 h-3.5" />
           </div>
           <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate">
-            صفحه {toPersianNumber(currentPage)} / {toPersianNumber(numPages || pageCount)}
+            صفحه {toPersianNumber(currentPage)} / {toPersianNumber(pageCount)}
           </span>
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
-          <button onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))} disabled={zoom <= 0.5}
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 disabled:opacity-30 transition">
-            <ZoomOut className="w-4 h-4" />
+          <button
+            onClick={() => setZoomPct((z) => Math.max(50, z - 25))}
+            disabled={zoomPct <= 50}
+            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 disabled:opacity-30 transition"
+            title="کوچک‌نمایی"
+          >
+            <span className="text-xs">−</span>
           </button>
-          <button onClick={() => setZoom((z) => Math.min(3, +(z + 0.25).toFixed(2)))} disabled={zoom >= 3}
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 disabled:opacity-30 transition">
-            <ZoomIn className="w-4 h-4" />
+          <button
+            onClick={() => setZoomPct((z) => Math.min(300, z + 25))}
+            disabled={zoomPct >= 300}
+            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 disabled:opacity-30 transition"
+            title="بزرگ‌نمایی"
+          >
+            <span className="text-xs">+</span>
           </button>
-          <button onClick={() => setRenderKey((k) => k + 1)} title="رندر مجدد"
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition">
-            <RefreshCw className="w-4 h-4" />
-          </button>
-          <button onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage <= 1}
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 disabled:opacity-30 transition">
+          <button
+            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+            disabled={currentPage <= 1}
+            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 disabled:opacity-30 transition"
+            title="صفحه قبل"
+          >
             <ChevronRight className="w-4 h-4" />
           </button>
-          <button onClick={() => onPageChange(Math.min(numPages || pageCount, currentPage + 1))} disabled={currentPage >= (numPages || pageCount)}
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 disabled:opacity-30 transition">
+          <button
+            onClick={() => onPageChange(Math.min(pageCount, currentPage + 1))}
+            disabled={currentPage >= pageCount}
+            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 disabled:opacity-30 transition"
+            title="صفحه بعد"
+          >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <a href={pdfUrl} target="_blank" rel="noreferrer"
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition">
+          <a
+            href={iframeSrc || '#'}
+            target="_blank"
+            rel="noreferrer"
+            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition"
+            title="باز در تب جدید"
+          >
             <ExternalLink className="w-4 h-4" />
           </a>
         </div>
       </div>
 
-      {/* Page render */}
-      <div className="flex-1 overflow-auto bg-slate-200 dark:bg-slate-950 p-3 sm:p-4 flex justify-center items-start">
-        {error ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center px-6 max-w-sm">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-500 flex items-center justify-center mb-3">
-              <AlertCircle className="w-6 h-6" />
-            </div>
-            <p className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-1">نمایش سند ممکن نشد</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4" dir="rtl">{error}</p>
-            <div className="flex gap-2">
-              <button onClick={() => { setError(null); setRenderKey((k) => k + 1); }}
-                className="text-xs px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold transition">
-                تلاش مجدد
-              </button>
-              <a href={pdfUrl} target="_blank" rel="noreferrer"
-                className="text-xs px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold transition">
-                دانلود فایل
-              </a>
-            </div>
-          </div>
-        ) : (
-          <div className="relative">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              key={`${currentPage}-${zoom}-${renderKey}`}
-              src={serverImgUrl}
-              alt={`صفحه ${currentPage}`}
-              onLoad={() => setLoading(false)}
-              onError={async () => {
-                setLoading(false);
-                // Probe the endpoint directly to capture the real error text
-                try {
-                  const probe = await fetch(serverImgUrl);
-                  const text = await probe.text();
-                  console.error('[pdf] server returned:', probe.status, text.slice(0, 300));
-                  setError(`رندر ناموفق (${probe.status}): ${text.slice(0, 200)}`);
-                } catch {
-                  setError('رندر صفحه از سرور ناموفق بود.');
-                }
-              }}
-              style={{
-                width: `${zoom * 100}%`,
-                maxWidth: `${zoom * 800}px`,
-                display: 'block',
-              }}
-              className="shadow-lg rounded-lg"
-            />
-            {loading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-slate-900/60 rounded-lg">
-                <Loader2 className="w-5 h-5 animate-spin text-brand-500" />
-              </div>
-            )}
-          </div>
-        )}
+      {/* Native PDF iframe */}
+      <div className="flex-1 overflow-hidden bg-slate-300 dark:bg-slate-800">
+        <iframe
+          key={iframeSrc}
+          src={iframeSrc}
+          className="w-full h-full border-0"
+          title="نمایش سند PDF"
+        />
       </div>
     </div>
   );

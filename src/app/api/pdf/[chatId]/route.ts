@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ chatId: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ chatId: string }> }) {
   const { chatId } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -16,58 +16,60 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cha
     .eq('id', chatId)
     .single();
 
-  if (!chat) {
-    console.error('[pdf-proxy] chat row not found:', chatId);
-    return new NextResponse('Chat not found', { status: 404 });
-  }
+  if (!chat) return new NextResponse('Chat not found', { status: 404 });
 
-  // Try the stored path first; fall back to the deterministic convention
   let filePath = chat.file_path;
-  let usedFallback = false;
   if (!filePath) {
     filePath = `${user.id}/${chatId}.pdf`;
-    usedFallback = true;
-    console.log('[pdf-proxy] file_path was null, trying fallback:', filePath);
+    await supabase.from('chats').update({ file_path: filePath }).eq('id', chatId);
   }
 
-  // Attempt download
   let { data, error } = await supabase.storage.from('pdfs').download(filePath);
 
-  // If fallback path fails, try the OTHER common shape: {userId}/{chatId}.pdf under a different userId prefix
-  if ((error || !data) && usedFallback) {
-    console.log('[pdf-proxy] fallback failed:', error?.message);
-  }
-
-  // If the stored path failed, try fallback as a last resort
-  if ((error || !data) && !usedFallback) {
+  if ((error || !data)) {
     const alt = `${user.id}/${chatId}.pdf`;
-    console.log('[pdf-proxy] stored path failed, trying alt:', alt);
-    const altRes = await supabase.storage.from('pdfs').download(alt);
-    if (altRes.data && !altRes.error) {
-      data = altRes.data;
-      error = null;
-      filePath = alt;
-      // Heal the DB row so future requests skip the fallback
-      await supabase.from('chats').update({ file_path: alt }).eq('id', chatId);
+    if (alt !== filePath) {
+      const altRes = await supabase.storage.from('pdfs').download(alt);
+      if (altRes.data && !altRes.error) {
+        data = altRes.data;
+        error = null;
+        await supabase.from('chats').update({ file_path: alt }).eq('id', chatId);
+      }
     }
   }
 
   if (error || !data) {
-    console.error('[pdf-proxy] download failed for', filePath, '→', error?.message);
-    return new NextResponse(
-      `File not available. path=${filePath} err=${error?.message ?? 'unknown'}`,
-      { status: 500 }
-    );
+    return new NextResponse(`File not available: ${error?.message ?? 'unknown'}`, { status: 500 });
   }
 
   const arrayBuffer = await data.arrayBuffer();
-  console.log('[pdf-proxy] serving', filePath, arrayBuffer.byteLength, 'bytes');
-
   if (arrayBuffer.byteLength === 0) {
-    return new NextResponse(
-      `File is empty in storage. path=${filePath}`,
-      { status: 500 }
-    );
+    return new NextResponse('File is empty in storage', { status: 500 });
+  }
+
+  // Check whether this is a HEAD/range request for PDF streaming
+  const rangeHeader = req.headers.get('range');
+
+  // Range support: browsers use it for PDF streaming in iframes
+  if (rangeHeader && rangeHeader.startsWith('bytes=')) {
+    const bytes = new Uint8Array(arrayBuffer);
+    const match = /bytes=(\d+)-(\d*)/.exec(rangeHeader);
+    if (match) {
+      const start = parseInt(match[1], 10);
+      const end = match[2] ? parseInt(match[2], 10) : bytes.length - 1;
+      const chunk = bytes.slice(start, end + 1);
+      return new NextResponse(chunk, {
+        status: 206,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Length': String(chunk.length),
+          'Content-Range': `bytes ${start}-${end}/${bytes.length}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Disposition': 'inline',
+          'Cache-Control': 'private, max-age=600',
+        },
+      });
+    }
   }
 
   return new NextResponse(arrayBuffer, {
@@ -76,7 +78,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cha
       'Content-Type': 'application/pdf',
       'Content-Length': String(arrayBuffer.byteLength),
       'Content-Disposition': 'inline',
+      'Accept-Ranges': 'bytes',
       'Cache-Control': 'private, max-age=600',
+      // Allow our own origin to embed this in an iframe
+      'X-Frame-Options': 'SAMEORIGIN',
     },
   });
 }
