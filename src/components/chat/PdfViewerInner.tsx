@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   ChevronRight, ChevronLeft, ExternalLink, FileText, PanelRightClose, PanelRightOpen,
 } from 'lucide-react';
@@ -21,15 +21,20 @@ export default function PdfViewerInner({
   highlightSnippet?: string;
 }) {
   const [showThumbs, setShowThumbs] = useState(true);
+  const [origin, setOrigin] = useState('');
 
-  // Build a URL to our hosted PDF.js viewer.
-  // ?file=  → URL-encoded path to our same-origin PDF proxy
-  // #page=  → jump to page
-  // #pagemode=thumbs → open the thumbnail sidebar
-  // #search=  → auto-highlight the quoted snippet (Chrome/Edge/Firefox)
+  // Need origin on client (window is not available during SSR)
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
   const viewerSrc = useMemo(() => {
-    const filePath = `/api/pdf/${chatId}`;
-    const encoded = encodeURIComponent(filePath);
+    if (!origin) return '';
+    // Absolute URL to our PDF proxy — required by PDF.js viewer's origin validation
+    const fileUrl = `${origin}/api/pdf/${chatId}`;
+
+    const params = new URLSearchParams();
+    params.set('file', fileUrl);
 
     const hash = new URLSearchParams();
     hash.set('page', String(currentPage));
@@ -40,8 +45,9 @@ export default function PdfViewerInner({
       hash.set('phrase', 'true');
     }
 
-    return `/pdfjs-viewer/viewer.html?file=${encoded}#${hash.toString()}`;
-  }, [chatId, currentPage, highlightSnippet, showThumbs]);
+    // Viewer lives in /pdfjs-viewer/web/viewer.html (preserving relative imports)
+    return `/pdfjs-viewer/web/viewer.html?${params.toString()}#${hash.toString()}`;
+  }, [origin, chatId, currentPage, highlightSnippet, showThumbs]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -69,7 +75,6 @@ export default function PdfViewerInner({
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
             disabled={currentPage <= 1}
             className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 disabled:opacity-30 transition"
-            title="صفحه قبل"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -77,30 +82,29 @@ export default function PdfViewerInner({
             onClick={() => onPageChange(Math.min(pageCount, currentPage + 1))}
             disabled={currentPage >= pageCount}
             className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 disabled:opacity-30 transition"
-            title="صفحه بعد"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <a
-            href={viewerSrc}
+            href={viewerSrc || '#'}
             target="_blank"
             rel="noreferrer"
             className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition"
-            title="باز در تب جدید"
           >
             <ExternalLink className="w-4 h-4" />
           </a>
         </div>
       </div>
 
-      {/* PDF.js viewer in an iframe (works on Android Chrome) */}
       <div className="flex-1 overflow-hidden bg-slate-300 dark:bg-slate-800">
-        <iframe
-          key={viewerSrc}
-          src={viewerSrc}
-          className="w-full h-full border-0"
-          title="نمایش سند PDF"
-        />
+        {viewerSrc ? (
+          <iframe
+            key={viewerSrc}
+            src={viewerSrc}
+            className="w-full h-full border-0"
+            title="نمایش سند PDF"
+          />
+        ) : null}
       </div>
     </div>
   );
