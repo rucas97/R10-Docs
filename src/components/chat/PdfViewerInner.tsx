@@ -44,13 +44,17 @@ export default function PdfViewerInner({
         const res = await fetch(pdfUrl);
         console.log('[pdf] fetch status:', res.status, res.headers.get('content-type'));
         if (!res.ok) {
+          let detail = '';
+          try { detail = await res.text(); } catch {}
+          console.error('[pdf] server error body:', detail);
           const map: Record<number, string> = {
             401: 'دسترسی به فایل مجاز نیست. لطفاً صفحه را دوباره بارگذاری کنید.',
             403: 'دسترسی به فایل مجاز نیست.',
             404: 'فایل PDF در سرور پیدا نشد. لطفاً دوباره آپلود کنید.',
-            500: 'خطای سرور در ارائه فایل.',
+            500: 'فایل در سرور موجود نیست. لطفاً سند را دوباره آپلود کنید.',
           };
-          throw new Error(map[res.status] || `خطا در دریافت فایل (${res.status})`);
+          const base = map[res.status] || `خطا در دریافت فایل (${res.status})`;
+          throw new Error(detail ? `${base}\n${detail}` : base);
         }
         const arrayBuffer = await res.arrayBuffer();
         console.log('[pdf] downloaded bytes:', arrayBuffer.byteLength);

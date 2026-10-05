@@ -68,29 +68,33 @@ const MessageBubble = memo(function MessageBubble({
             )}
           </div>
 
-          {/* Copy button — appears on hover */}
-          {parsed.content && (
+        </div>
+
+        {parsed.content && (
+          <div className={`mt-2 flex items-center flex-wrap gap-1.5 ${isUser ? 'justify-end' : ''}`}>
+            {!isUser && parsed.citations.length > 0 && (
+              <>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">منبع:</span>
+                {parsed.citations.map((c, i) => (
+                  <button key={`${c.page}-${i}`} onClick={() => onOpenSource(parsed.citations, i)}
+                    className="text-[11px] px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-950/60 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 font-bold transition">
+                    ص {toPersianNumber(c.page)}
+                  </button>
+                ))}
+              </>
+            )}
             <button
               onClick={handleCopy}
               title={copied ? 'کپی شد' : 'کپی متن'}
-              className={`absolute -top-2 ${isUser ? '-left-2' : '-left-2'} w-7 h-7 rounded-lg flex items-center justify-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 shadow-sm transition opacity-70 active:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100 ${
-                copied ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400'
+              className={`text-[11px] px-2.5 py-1 rounded-lg border flex items-center gap-1 font-bold transition ${
+                copied
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-400'
+                  : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400'
               }`}
             >
-              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+              <span>{copied ? 'کپی شد' : 'کپی'}</span>
             </button>
-          )}
-        </div>
-
-        {!isUser && parsed.citations.length > 0 && (
-          <div className="mt-2 flex items-center flex-wrap gap-1.5">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">منبع:</span>
-            {parsed.citations.map((c, i) => (
-              <button key={`${c.page}-${i}`} onClick={() => onOpenSource(parsed.citations, i)}
-                className="text-[11px] px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-950/60 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 font-bold transition">
-                ص {toPersianNumber(c.page)}
-              </button>
-            ))}
           </div>
         )}
       </div>
