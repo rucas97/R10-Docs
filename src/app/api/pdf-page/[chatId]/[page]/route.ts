@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
 
 export async function GET(
   req: NextRequest,
@@ -25,70 +26,127 @@ export async function GET(
     .single();
 
   if (!chat?.file_path) {
+    console.error('[pdf-page] no file_path for', chatId);
     return new NextResponse('File not found', { status: 404 });
   }
 
-  const { data: fileData, error } = await supabase.storage
+  // Download the PDF
+  const { data: fileData, error: dlErr } = await supabase.storage
     .from('pdfs')
     .download(chat.file_path);
 
-  if (error || !fileData) {
-    return new NextResponse('Download failed', { status: 500 });
+  if (dlErr || !fileData) {
+    console.error('[pdf-page] download failed:', dlErr?.message);
+    return new NextResponse('Download failed: ' + (dlErr?.message ?? ''), { status: 500 });
   }
 
   const arrayBuffer = await fileData.arrayBuffer();
-  const uint8 = new Uint8Array(arrayBuffer);
+  console.log('[pdf-page] downloaded', arrayBuffer.byteLength, 'bytes');
 
+  let stage = 'init';
   try {
-    // Legacy build avoids the Chrome accelerated-canvas bug
+    stage = 'import-pdfjs';
+    // Import the legacy build (works in plain Node — no DOM, no worker)
     const pdfjsLib: any = await import('pdfjs-dist/legacy/build/pdf.mjs');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+    console.log('[pdf-page] pdfjs version:', pdfjsLib.version);
 
-    // Set up canvas factory for Node
+    stage = 'import-canvas';
     const { createCanvas } = await import('@napi-rs/canvas');
+    console.log('[pdf-page] @napi-rs/canvas loaded');
 
-    const doc = await pdfjsLib.getDocument({
+    // Custom CanvasFactory so pdfjs knows how to make canvases on Node
+    class NodeCanvasFactory {
+      create(width: number, height: number) {
+        const canvas = createCanvas(width, height);
+        return { canvas, context: canvas.getContext('2d') };
+      }
+      reset(canvasAndContext: any, width: number, height: number) {
+        canvasAndContext.canvas.width = width;
+        canvasAndContext.canvas.height = height;
+      }
+      destroy(canvasAndContext: any) {
+        canvasAndContext.canvas.width = 0;
+        canvasAndContext.canvas.height = 0;
+      }
+    }
+
+    stage = 'getDocument';
+    const uint8 = new Uint8Array(arrayBuffer);
+
+    // For CMaps + standard fonts: since we can't reliably fetch from unpkg
+    // inside Vercel's runtime (Iran-origin requests have no proxy here),
+    // we point at our own /public copies served via the deployment URL.
+    const origin = req.nextUrl.origin;
+
+    const loadingTask = pdfjsLib.getDocument({
       data: uint8,
-      useSystemFonts: false,
-      disableFontFace: true,
-      isEvalSupported: false,
-      cMapUrl: 'https://unpkg.com/pdfjs-dist@' + pdfjsLib.version + '/cmaps/',
+      // No worker in Node — this is the correct way to disable it
+      disableWorker: true,
+      // Use our own bundled resources
+      cMapUrl: `${origin}/pdfjs/cmaps/`,
       cMapPacked: true,
-      standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@' + pdfjsLib.version + '/standard_fonts/',
-    }).promise;
+      standardFontDataUrl: `${origin}/pdfjs/standard_fonts/`,
+      // Path-based glyph rendering (avoids FontFace API bugs)
+      disableFontFace: true,
+      useSystemFonts: false,
+      isEvalSupported: false,
+      canvasFactory: new NodeCanvasFactory(),
+      verbosity: 0,
+    } as any);
 
+    const doc = await loadingTask.promise;
+    console.log('[pdf-page] doc loaded, pages:', doc.numPages);
+
+    stage = 'getPage';
     const page = await doc.getPage(pageNum);
+
+    stage = 'viewport';
     const viewport = page.getViewport({ scale: 2.0 });
 
-    // Create a node canvas
+    stage = 'createCanvas';
     const canvas = createCanvas(
       Math.ceil(viewport.width),
       Math.ceil(viewport.height)
     );
-    const ctx = (canvas as any).getContext('2d');
+    const ctx: any = canvas.getContext('2d');
 
-    // Force LTR + white background
-    (ctx as any).direction = 'ltr';
+    // Force LTR (this route renders the raw PDF; direction doesn't matter
+    // for the pixel content — pdfjs already laid the glyphs out per the PDF)
+    ctx.direction = 'ltr';
+
+    // White background so transparent PDFs don't show as black
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    stage = 'render';
     await page.render({
       canvasContext: ctx,
       viewport,
+      canvasFactory: new NodeCanvasFactory(),
       intent: 'print',
-    }).promise;
+    } as any).promise;
 
-    const pngBuffer = (canvas as any).toBuffer('image/png');
+    stage = 'toBuffer';
+    const pngBuffer = canvas.toBuffer('image/png');
+    console.log('[pdf-page] ✅ rendered page', pageNum, pngBuffer.length, 'bytes');
 
-    return new NextResponse(pngBuffer, {
+    return new NextResponse(pngBuffer as any, {
       status: 200,
       headers: {
         'Content-Type': 'image/png',
         'Cache-Control': 'private, max-age=3600',
+        'X-Render-Stage': 'ok',
       },
     });
   } catch (e: any) {
-    console.error('[pdf-page] render failed:', e?.message);
-    return new NextResponse('Render failed: ' + e?.message, { status: 500 });
+    console.error(`[pdf-page] ❌ failed at stage=${stage}:`, e?.message);
+    console.error('[pdf-page] stack:', e?.stack?.slice(0, 500));
+    return new NextResponse(
+      `Render failed at ${stage}: ${e?.message ?? 'unknown'}`,
+      {
+        status: 500,
+        headers: { 'X-Render-Stage': stage },
+      }
+    );
   }
 }

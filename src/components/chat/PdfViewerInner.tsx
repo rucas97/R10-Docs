@@ -115,9 +115,17 @@ export default function PdfViewerInner({
               src={serverImgUrl}
               alt={`صفحه ${currentPage}`}
               onLoad={() => setLoading(false)}
-              onError={() => {
+              onError={async () => {
                 setLoading(false);
-                setError('رندر صفحه از سرور ناموفق بود.');
+                // Probe the endpoint directly to capture the real error text
+                try {
+                  const probe = await fetch(serverImgUrl);
+                  const text = await probe.text();
+                  console.error('[pdf] server returned:', probe.status, text.slice(0, 300));
+                  setError(`رندر ناموفق (${probe.status}): ${text.slice(0, 200)}`);
+                } catch {
+                  setError('رندر صفحه از سرور ناموفق بود.');
+                }
               }}
               style={{
                 width: `${zoom * 100}%`,
