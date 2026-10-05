@@ -9,128 +9,141 @@ if (proxyUrl) {
 
 export const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-// Ordered list — first that works wins.
-// 3.5-flash is best but often overloaded. 2.5 and 2.0 are more available.
+// Only two models — the best and the most-available fallback.
+// Adding more = more wasted requests when quota is tight.
 export const MODEL_CHAIN = [
-  'gemini-3.5-flash',
   'gemini-2.5-flash',
-  'gemini-2.0-flash',
   'gemini-2.0-flash-lite',
 ];
 
-const RETRYABLE_STATUSES = [429, 500, 502, 503, 504];
+// Remember which model worked last time — try it first, always.
+let stickyModel: string | null = null;
 
-function isRetryable(err: any): boolean {
-  const status = err?.status ?? err?.response?.status;
-  if (RETRYABLE_STATUSES.includes(status)) return true;
-  const msg = String(err?.message || '').toLowerCase();
-  return (
-    msg.includes('503') ||
-    msg.includes('overloaded') ||
-    msg.includes('high demand') ||
-    msg.includes('service unavailable') ||
-    msg.includes('rate limit') ||
-    msg.includes('quota')
-  );
+// Per-model cooldown: if a model 429s, don't try it again for N seconds.
+const cooldownUntil = new Map<string, number>();
+const COOLDOWN_MS = 60_000; // 1 minute
+
+function isCoolingDown(model: string): boolean {
+  const t = cooldownUntil.get(model);
+  return t != null && t > Date.now();
 }
 
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
+function markCooldown(model: string) {
+  cooldownUntil.set(model, Date.now() + COOLDOWN_MS);
+  console.log(`[gemini] ${model} cooldown for ${COOLDOWN_MS / 1000}s`);
+}
+
+function getOrderedModels(): string[] {
+  const list = [...MODEL_CHAIN];
+  if (stickyModel && list.includes(stickyModel)) {
+    // move sticky to front
+    return [stickyModel, ...list.filter((m) => m !== stickyModel)];
+  }
+  return list;
+}
+
+function isRateLimit(err: any): boolean {
+  const s = err?.status ?? err?.response?.status;
+  if (s === 429) return true;
+  const m = String(err?.message || '').toLowerCase();
+  return m.includes('429') || m.includes('quota') || m.includes('rate limit') || m.includes('resource_exhausted');
+}
+
+function isOverload(err: any): boolean {
+  const s = err?.status ?? err?.response?.status;
+  if (s === 503 || s === 500 || s === 502 || s === 504) return true;
+  const m = String(err?.message || '').toLowerCase();
+  return m.includes('503') || m.includes('overloaded') || m.includes('high demand') || m.includes('service unavailable');
 }
 
 /**
- * Try to send a streaming message across the model chain with retries.
- * Returns { stream, model, chat } on success.
+ * Try models in order, ONE attempt each. No retries within a model.
+ * Rate limit → mark cooldown, jump to next.
+ * Overload → jump to next.
  */
 export async function sendWithFallback(opts: {
   systemInstruction: string;
   history: { role: 'user' | 'model'; parts: { text: string }[] }[];
   message: string;
 }): Promise<{ stream: AsyncIterable<any>; model: string }> {
-  let lastErr: any = null;
+  const errors: string[] = [];
 
-  for (const modelName of MODEL_CHAIN) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        console.log(`[gemini] trying ${modelName} (attempt ${attempt + 1})`);
-        const model = genAI.getGenerativeModel({
-          model: modelName,
-          systemInstruction: opts.systemInstruction,
-        });
-        const chat = model.startChat({ history: opts.history });
-        const result = await chat.sendMessageStream(opts.message);
+  for (const modelName of getOrderedModels()) {
+    if (isCoolingDown(modelName)) {
+      console.log(`[gemini] skip ${modelName} (cooling down)`);
+      continue;
+    }
+    try {
+      console.log(`[gemini] trying ${modelName}`);
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: opts.systemInstruction,
+      });
+      const chat = model.startChat({ history: opts.history });
+      const result = await chat.sendMessageStream(opts.message);
 
-        // Kick off the stream once to confirm it works before returning
-        // (some 503s only surface on the first read)
-        const iterator = result.stream[Symbol.asyncIterator]();
-        const first = await iterator.next();
-        if (first.done) {
-          // Empty but valid
-          return {
-            stream: (async function* () {})() as any,
-            model: modelName,
-          };
-        }
+      // Verify first chunk arrives
+      const iterator = result.stream[Symbol.asyncIterator]();
+      const first = await iterator.next();
 
-        const wrapped = (async function* () {
-          yield first.value;
-          for await (const chunk of { [Symbol.asyncIterator]: () => iterator } as any) {
-            yield chunk;
-          }
-        })();
+      stickyModel = modelName;
+      console.log(`[gemini] ✅ ${modelName}`);
 
-        console.log(`[gemini] ✅ using ${modelName}`);
-        return { stream: wrapped as any, model: modelName };
-      } catch (err: any) {
-        lastErr = err;
-        if (!isRetryable(err)) {
-          console.warn(`[gemini] non-retryable on ${modelName}:`, err?.message);
-          break; // try next model anyway
-        }
-        const wait = 800 * (attempt + 1);
-        console.warn(`[gemini] ${modelName} failed (${err?.status ?? '?'}), retrying in ${wait}ms`);
-        await sleep(wait);
+      if (first.done) {
+        return { stream: (async function* () {})(), model: modelName };
       }
+      const wrapped = (async function* () {
+        yield first.value;
+        while (true) {
+          const n = await iterator.next();
+          if (n.done) return;
+          yield n.value;
+        }
+      })();
+      return { stream: wrapped, model: modelName };
+    } catch (err: any) {
+      if (isRateLimit(err)) markCooldown(modelName);
+      const tag = isRateLimit(err) ? '429' : isOverload(err) ? '503' : 'err';
+      console.warn(`[gemini] ${modelName} ${tag}:`, err?.message?.slice(0, 120));
+      errors.push(`${modelName}: ${tag}`);
     }
   }
 
-  throw lastErr ?? new Error('All Gemini models failed');
+  const detail = errors.join('; ') || 'no models available';
+  throw new Error(`All Gemini models failed (${detail})`);
 }
 
-/**
- * Non-streaming variant for the summary call.
- */
 export async function generateWithFallback(opts: {
   systemInstruction?: string;
   prompt: string;
   maxOutputTokens?: number;
 }): Promise<{ text: string; model: string }> {
-  let lastErr: any = null;
+  const errors: string[] = [];
 
-  for (const modelName of MODEL_CHAIN) {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        console.log(`[gemini] generate ${modelName} (attempt ${attempt + 1})`);
-        const model = genAI.getGenerativeModel({
-          model: modelName,
-          systemInstruction: opts.systemInstruction,
-          generationConfig: opts.maxOutputTokens
-            ? { maxOutputTokens: opts.maxOutputTokens }
-            : undefined,
-        });
-        const result = await model.generateContent(opts.prompt);
-        const text = result.response.text().trim();
-        console.log(`[gemini] ✅ generated with ${modelName}`);
-        return { text, model: modelName };
-      } catch (err: any) {
-        lastErr = err;
-        if (!isRetryable(err)) break;
-        const wait = 1200 * (attempt + 1);
-        console.warn(`[gemini] ${modelName} ${err?.status ?? '?'} — retry in ${wait}ms`);
-        await sleep(wait);
-      }
+  for (const modelName of getOrderedModels()) {
+    if (isCoolingDown(modelName)) {
+      console.log(`[gemini] skip ${modelName} (cooling down)`);
+      continue;
+    }
+    try {
+      console.log(`[gemini] generate ${modelName}`);
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: opts.systemInstruction,
+        generationConfig: opts.maxOutputTokens ? { maxOutputTokens: opts.maxOutputTokens } : undefined,
+      });
+      const result = await model.generateContent(opts.prompt);
+      const text = result.response.text().trim();
+      stickyModel = modelName;
+      console.log(`[gemini] ✅ ${modelName}`);
+      return { text, model: modelName };
+    } catch (err: any) {
+      if (isRateLimit(err)) markCooldown(modelName);
+      const tag = isRateLimit(err) ? '429' : isOverload(err) ? '503' : 'err';
+      console.warn(`[gemini] ${modelName} ${tag}:`, err?.message?.slice(0, 120));
+      errors.push(`${modelName}: ${tag}`);
     }
   }
 
-  throw lastErr ?? new Error('All Gemini models failed');
+  throw new Error(`All Gemini models failed (${errors.join('; ')})`);
 }

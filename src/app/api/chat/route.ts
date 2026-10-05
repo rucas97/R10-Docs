@@ -11,7 +11,7 @@ function friendlyError(message: string): string {
     return 'سرویس هوش مصنوعی در این لحظه شلوغ است. لطفاً چند لحظه صبر کنید و دوباره بپرسید.';
   }
   if (msg.includes('429') || msg.includes('quota') || msg.includes('rate')) {
-    return 'تعداد درخواست‌ها زیاد شده است. چند لحظه صبر کنید.';
+    return 'سقف درخواست‌های امروز پر شده. لطفاً چند دقیقه صبر کنید و دوباره تلاش کنید. (نسخه رایگان گوگل محدود است)';
   }
   if (msg.includes('fetch failed') || msg.includes('network')) {
     return 'ارتباط با سرور برقرار نشد. لطفاً اتصال اینترنت خود را بررسی کنید.';
