@@ -73,7 +73,7 @@ const MessageBubble = memo(function MessageBubble({
             <button
               onClick={handleCopy}
               title={copied ? 'کپی شد' : 'کپی متن'}
-              className={`absolute -top-2 ${isUser ? '-left-2' : '-left-2'} w-7 h-7 rounded-lg flex items-center justify-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 shadow-sm opacity-0 group-hover:opacity-100 focus:opacity-100 transition ${
+              className={`absolute -top-2 ${isUser ? '-left-2' : '-left-2'} w-7 h-7 rounded-lg flex items-center justify-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 shadow-sm transition opacity-70 active:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100 ${
                 copied ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400'
               }`}
             >

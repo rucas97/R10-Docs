@@ -22,13 +22,8 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
     .eq('chat_id', id)
     .order('created_at', { ascending: true });
 
-  let pdfUrl: string | null = null;
-  if (chat.file_path) {
-    const { data } = await supabase.storage
-      .from('pdfs')
-      .createSignedUrl(chat.file_path, 3600);
-    pdfUrl = data?.signedUrl ?? null;
-  }
+  // Serve via our own domain so no CORS issues on mobile
+  const pdfUrl = chat.file_path ? `/api/pdf/${chat.id}` : null;
 
   return (
     <ChatPanel

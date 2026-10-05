@@ -40,7 +40,9 @@ export default function PdfViewerInner({
         setError(null);
 
         // Fetch as blob first so we can show meaningful HTTP errors
+        console.log('[pdf] fetching', pdfUrl);
         const res = await fetch(pdfUrl);
+        console.log('[pdf] fetch status:', res.status, res.headers.get('content-type'));
         if (!res.ok) {
           const map: Record<number, string> = {
             401: 'دسترسی به فایل مجاز نیست. لطفاً صفحه را دوباره بارگذاری کنید.',
@@ -51,6 +53,7 @@ export default function PdfViewerInner({
           throw new Error(map[res.status] || `خطا در دریافت فایل (${res.status})`);
         }
         const arrayBuffer = await res.arrayBuffer();
+        console.log('[pdf] downloaded bytes:', arrayBuffer.byteLength);
         if (arrayBuffer.byteLength === 0) {
           throw new Error('فایل PDF خالی است یا به‌درستی آپلود نشده است.');
         }

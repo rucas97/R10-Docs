@@ -60,9 +60,14 @@ export async function POST(req: NextRequest) {
 
     if (upErr) {
       console.error('[upload] storage error:', upErr.message);
-    } else {
-      await supabase.from('chats').update({ file_path: filePath }).eq('id', chatId);
+      // Hard fail: clean up the chat row and surface the error
+      await supabase.from('chats').delete().eq('id', chatId);
+      return NextResponse.json(
+        { error: 'ذخیره‌سازی فایل ناموفق بود. لطفاً دوباره تلاش کنید.' },
+        { status: 500 }
+      );
     }
+    await supabase.from('chats').update({ file_path: filePath }).eq('id', chatId);
 
     // Welcome message — will be followed by summary on success
     await supabase.from('messages').insert({
