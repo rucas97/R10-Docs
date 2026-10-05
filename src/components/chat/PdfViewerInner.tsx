@@ -1,32 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ChevronRight, ChevronLeft, ExternalLink, FileText,
   Loader2, AlertCircle, ZoomIn, ZoomOut, RefreshCw,
 } from 'lucide-react';
 import { toPersianNumber } from '@/lib/citations';
 
-// Module-level pdfjs handle — loaded once, shared across effects and helpers.
-let pdfjsLib: any = null;
-let pdfjsPromise: Promise<any> | null = null;
-
-async function loadPdfJs(): Promise<any> {
-  if (pdfjsLib) return pdfjsLib;
-  if (!pdfjsPromise) {
-    pdfjsPromise = (async () => {
-      const lib: any = await import('pdfjs-dist');
-      lib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-      pdfjsLib = lib;
-      console.log('[pdf] pdfjs version:', lib.version);
-      return lib;
-    })();
-  }
-  return pdfjsPromise;
-}
-
 export default function PdfViewerInner({
   pdfUrl,
+  chatId,
   pageCount,
   currentPage,
   onPageChange,
@@ -34,198 +17,27 @@ export default function PdfViewerInner({
   highlightSnippet = '',
 }: {
   pdfUrl: string | null;
+  chatId: string;
   pageCount: number;
   currentPage: number;
   onPageChange: (p: number) => void;
   primaryLanguage?: 'fa' | 'en';
   highlightSnippet?: string;
 }) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const pdfDocRef = useRef<any>(null);
-  const renderingRef = useRef<boolean>(false);
-
   const [numPages, setNumPages] = useState(pageCount || 0);
   const [loading, setLoading] = useState(true);
-  const [rendering, setRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [renderKey, setRenderKey] = useState(0);
+  const [usingFallback, setUsingFallback] = useState(false);
 
-  // Load PDF
+  // Server-rendered image URL
+  const serverImgUrl = `/api/pdf-page/${chatId}/${currentPage}?z=${zoom}&r=${renderKey}`;
+
   useEffect(() => {
-    if (!pdfUrl) return;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        console.log('[pdf] loading from', pdfUrl);
-
-        const res = await fetch(pdfUrl);
-        console.log('[pdf] fetch status:', res.status, 'content-type:', res.headers.get('content-type'));
-        if (!res.ok) {
-          const detail = await res.text().catch(() => '');
-          console.error('[pdf] server error body:', detail);
-          throw new Error(detail || `خطای سرور (${res.status})`);
-        }
-        const arrayBuffer = await res.arrayBuffer();
-        console.log('[pdf] downloaded bytes:', arrayBuffer.byteLength);
-        if (arrayBuffer.byteLength === 0) {
-          throw new Error('فایل PDF خالی است.');
-        }
-
-        const lib = await loadPdfJs();
-
-        const doc = await lib.getDocument({
-          data: arrayBuffer,
-          cMapUrl: '/pdfjs/cmaps/',
-          cMapPacked: true,
-          standardFontDataUrl: '/pdfjs/standard_fonts/',
-        }).promise;
-
-        if (cancelled) return;
-        pdfDocRef.current = doc;
-        setNumPages(doc.numPages);
-        setLoading(false);
-        console.log('[pdf] ✅ loaded', doc.numPages, 'pages');
-      } catch (e: any) {
-        if (cancelled) return;
-        console.error('[pdf] load error:', e);
-        setError(e?.message || 'خطا در بارگذاری سند');
-        setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      if (pdfDocRef.current) {
-        try { pdfDocRef.current.destroy(); } catch {}
-        pdfDocRef.current = null;
-      }
-    };
-  }, [pdfUrl]);
-
-  // Render current page
-  useEffect(() => {
-    if (loading) return;
-    if (!pdfDocRef.current) {
-      console.log('[pdf] render skipped: no doc yet');
-      return;
-    }
-    if (!canvasRef.current) {
-      console.log('[pdf] render skipped: canvas not in DOM yet');
-      return;
-    }
-    if (renderingRef.current) return;
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        renderingRef.current = true;
-        setRendering(true);
-        console.log('[pdf] render start: page', currentPage, 'zoom', zoom);
-
-        const doc = pdfDocRef.current;
-        const page = await doc.getPage(currentPage);
-        if (cancelled) return;
-
-        // Compute scale
-        const containerWidth = containerRef.current?.clientWidth ?? 800;
-        const unscaled = page.getViewport({ scale: 1 });
-        const fitScale = Math.max(0.4, (containerWidth - 32) / unscaled.width);
-        const scale = fitScale * zoom;
-        const viewport = page.getViewport({ scale });
-
-        console.log('[pdf] container width:', containerWidth,
-                    'unscaled width:', unscaled.width,
-                    'fit scale:', fitScale,
-                    'final scale:', scale,
-                    'viewport:', viewport.width, 'x', viewport.height);
-
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        const dpr = Math.min(window.devicePixelRatio || 1, 3); // crisp on retina, capped at 3
-        canvas.width = Math.floor(viewport.width * dpr);
-        canvas.height = Math.floor(viewport.height * dpr);
-        canvas.style.width = `${viewport.width}px`;
-        canvas.style.height = `${viewport.height}px`;
-        canvas.style.background = 'white';
-
-        console.log('[pdf] canvas set to', canvas.width, 'x', canvas.height, 'dpr', dpr);
-
-        const ctx = canvas.getContext('2d', { alpha: false });
-        if (!ctx) {
-          throw new Error('canvas 2d context unavailable');
-        }
-
-        // Fill with white first (some PDFs render with transparent backgrounds)
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-        await page.render({
-          canvasContext: ctx,
-          viewport,
-          intent: 'display',
-        }).promise;
-
-        if (cancelled) return;
-        console.log('[pdf] ✅ render complete for page', currentPage);
-
-        // Blank-canvas detection: sample a handful of pixels
-        try {
-          const sample = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-          let nonWhite = 0;
-          // sample every ~1000th pixel
-          for (let i = 0; i < sample.length; i += 4000) {
-            const r = sample[i], g = sample[i + 1], b = sample[i + 2];
-            if (r < 240 || g < 240 || b < 240) nonWhite++;
-          }
-          console.log('[pdf] non-white samples:', nonWhite);
-          if (nonWhite < 5) {
-            console.warn('[pdf] ⚠️ canvas looks mostly blank — CMaps or fonts may be missing');
-            setError('صفحه سفید رندر شد. احتمالاً فایل شامل فونت‌های خاص است.');
-          }
-        } catch (e) {
-          console.warn('[pdf] pixel sampling failed (may be cross-origin):', e);
-        }
-
-        // Highlight snippet
-        if (highlightSnippet && highlightSnippet.trim().length > 3) {
-          try {
-            const textContent = await page.getTextContent();
-            const lib = await loadPdfJs();
-            const rects = findHighlightRects(textContent.items, highlightSnippet, viewport, lib);
-            if (rects.length > 0) {
-              ctx.fillStyle = 'rgba(251, 191, 36, 0.35)';
-              ctx.strokeStyle = 'rgba(217, 119, 6, 0.65)';
-              ctx.lineWidth = 1;
-              rects.forEach((r) => {
-                ctx.fillRect(r.x, r.y, r.w, r.h);
-                ctx.strokeRect(r.x, r.y, r.w, r.h);
-              });
-              console.log('[pdf] highlighted', rects.length, 'rects');
-            }
-          } catch (he) {
-            console.warn('[pdf] highlight failed:', he);
-          }
-        }
-      } catch (e: any) {
-        if (cancelled) return;
-        console.error('[pdf] render error:', e);
-        setError(e?.message || 'خطا در نمایش این صفحه');
-      } finally {
-        renderingRef.current = false;
-        if (!cancelled) setRendering(false);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [currentPage, zoom, numPages, highlightSnippet, loading, renderKey, primaryLanguage]);
+    setNumPages(pageCount || 0);
+    setLoading(false);
+  }, [pageCount]);
 
   if (!pdfUrl) {
     return (
@@ -237,6 +49,7 @@ export default function PdfViewerInner({
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Toolbar */}
       <div className="h-12 shrink-0 flex items-center justify-between px-2 sm:px-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-7 h-7 rounded-lg bg-brand-100 dark:bg-brand-950 text-brand-600 dark:text-brand-400 flex items-center justify-center shrink-0">
@@ -274,8 +87,9 @@ export default function PdfViewerInner({
         </div>
       </div>
 
-      <div ref={containerRef} className="flex-1 overflow-auto bg-slate-200 dark:bg-slate-950 p-3 sm:p-4 flex justify-center items-start">
-        {error && !rendering ? (
+      {/* Page render */}
+      <div className="flex-1 overflow-auto bg-slate-200 dark:bg-slate-950 p-3 sm:p-4 flex justify-center items-start">
+        {error ? (
           <div className="flex flex-col items-center justify-center py-12 text-center px-6 max-w-sm">
             <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-500 flex items-center justify-center mb-3">
               <AlertCircle className="w-6 h-6" />
@@ -293,16 +107,27 @@ export default function PdfViewerInner({
               </a>
             </div>
           </div>
-        ) : loading ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-3">
-            <Loader2 className="w-6 h-6 animate-spin text-brand-500" />
-            <p className="text-xs text-slate-400 dark:text-slate-500">در حال بارگذاری سند...</p>
-          </div>
         ) : (
           <div className="relative">
-            <canvas ref={canvasRef} className="shadow-lg rounded-lg overflow-hidden" />
-            {rendering && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-slate-900/60 rounded-lg backdrop-blur-[1px]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              key={`${currentPage}-${zoom}-${renderKey}`}
+              src={serverImgUrl}
+              alt={`صفحه ${currentPage}`}
+              onLoad={() => setLoading(false)}
+              onError={() => {
+                setLoading(false);
+                setError('رندر صفحه از سرور ناموفق بود.');
+              }}
+              style={{
+                width: `${zoom * 100}%`,
+                maxWidth: `${zoom * 800}px`,
+                display: 'block',
+              }}
+              className="shadow-lg rounded-lg"
+            />
+            {loading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-slate-900/60 rounded-lg">
                 <Loader2 className="w-5 h-5 animate-spin text-brand-500" />
               </div>
             )}
@@ -311,65 +136,4 @@ export default function PdfViewerInner({
       </div>
     </div>
   );
-}
-
-function findHighlightRects(
-  items: any[],
-  snippet: string,
-  viewport: any,
-  pdfjsLib: any
-): { x: number; y: number; w: number; h: number }[] {
-  const normalizedSnippet = snippet.replace(/\s+/g, ' ').trim().toLowerCase();
-  if (!normalizedSnippet) return [];
-
-  const snippetWords = normalizedSnippet
-    .split(/\s+/)
-    .map((w) => w.replace(/[^\p{L}\p{N}]/gu, ''))
-    .filter((w) => w.length >= 3);
-  if (snippetWords.length === 0) return [];
-
-  type Item = { str: string; x: number; y: number; w: number; h: number };
-  const positioned: Item[] = items
-    .filter((it: any) => it.str && it.str.trim().length > 0)
-    .map((it: any) => {
-      const tx = pdfjsLib.Util.transform(viewport.transform, it.transform);
-      const fontHeight = Math.hypot(tx[2], tx[3]);
-      return {
-        str: it.str,
-        x: tx[4],
-        y: tx[5] - fontHeight,
-        w: it.width * viewport.scale,
-        h: fontHeight * 1.15,
-      };
-    });
-
-  const lines = new Map<number, Item[]>();
-  for (const it of positioned) {
-    const key = Math.round(it.y / 4) * 4;
-    if (!lines.has(key)) lines.set(key, []);
-    lines.get(key)!.push(it);
-  }
-
-  const rects: { x: number; y: number; w: number; h: number }[] = [];
-  for (const [, lineItems] of lines) {
-    lineItems.sort((a, b) => a.x - b.x);
-    const lineText = lineItems.map((i) => i.str).join(' ').toLowerCase();
-    const cleaned = lineText.replace(/[^\p{L}\p{N}\s]/gu, ' ');
-
-    let matched = 0;
-    for (const w of snippetWords) {
-      if (cleaned.includes(w)) matched++;
-    }
-    const ratio = matched / snippetWords.length;
-
-    if (ratio >= 0.5) {
-      const minX = Math.min(...lineItems.map((i) => i.x)) - 2;
-      const maxX = Math.max(...lineItems.map((i) => i.x + i.w)) + 2;
-      const minY = Math.min(...lineItems.map((i) => i.y)) - 2;
-      const maxY = Math.max(...lineItems.map((i) => i.y + i.h)) + 2;
-      rects.push({ x: minX, y: minY, w: maxX - minX, h: maxY - minY });
-    }
-  }
-
-  return rects;
 }
