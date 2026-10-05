@@ -5,6 +5,7 @@ import {
   ChevronRight, ChevronLeft, ExternalLink, FileText, PanelRightClose, PanelRightOpen,
 } from 'lucide-react';
 import { toPersianNumber } from '@/lib/citations';
+import { buildSearchQuery } from '@/lib/search-query';
 
 export default function PdfViewerInner({
   chatId,
@@ -41,8 +42,11 @@ export default function PdfViewerInner({
     hash.set('zoom', 'page-width');
     if (showThumbs) hash.set('pagemode', 'thumbs');
     if (highlightSnippet && highlightSnippet.trim().length > 3) {
-      hash.set('search', highlightSnippet.trim().slice(0, 200));
-      hash.set('phrase', 'true');
+      const q = buildSearchQuery(highlightSnippet, 6);
+      if (q) {
+        hash.set('search', q);
+        // No phrase=true — let PDF.js highlight each distinctive word
+      }
     }
 
     // Viewer lives in /pdfjs-viewer/web/viewer.html (preserving relative imports)

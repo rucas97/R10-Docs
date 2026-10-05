@@ -50,7 +50,7 @@ export function SourceModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6" dir="rtl">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full max-w-4xl h-[92vh] sm:h-[88vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="relative w-full max-w-4xl h-[90dvh] sm:h-[86dvh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         <div className="h-14 shrink-0 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
@@ -92,7 +92,7 @@ export function SourceModal({
           </div>
         )}
 
-        <div className="flex-1 overflow-hidden bg-slate-200 dark:bg-slate-950">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-slate-200 dark:bg-slate-950">
           <PdfViewerInner
             chatId={chatId}
             pageCount={Math.max(...citations.map((c) => c.page))}

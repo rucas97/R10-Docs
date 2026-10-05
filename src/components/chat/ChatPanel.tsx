@@ -43,7 +43,7 @@ const MessageBubble = memo(function MessageBubble({
   };
 
   return (
-    <div className={`flex items-start gap-2.5 sm:gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
+    <div className={`flex items-start gap-2.5 sm:gap-3 ${isUser ? '' : 'flex-row-reverse'}`}>
       <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
         isUser ? 'bg-brand-600 text-white' : 'bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300'
       }`}>
