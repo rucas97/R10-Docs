@@ -5,12 +5,16 @@ import { Menu, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { Sidebar } from './Sidebar';
 
-type Chat = { id: string; title: string; updated_at: string };
+type Chat = {
+  id: string;
+  title: string;
+  updated_at: string;
+  is_pinned: boolean | null;
+  pinned_at: string | null;
+};
 
 export function AppShell({
-  user,
-  chats,
-  children,
+  user, chats, children,
 }: {
   user: { email: string; id: string };
   chats: Chat[];
@@ -20,7 +24,6 @@ export function AppShell({
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
-      {/* Sidebar — fixed on desktop, drawer on mobile */}
       <aside
         className={`
           fixed inset-y-0 right-0 z-40 w-72 bg-white dark:bg-slate-900
@@ -33,7 +36,6 @@ export function AppShell({
         <Sidebar user={user} chats={chats} onClose={() => setDrawerOpen(false)} />
       </aside>
 
-      {/* Backdrop for mobile drawer */}
       {drawerOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/40 lg:hidden"
@@ -41,9 +43,7 @@ export function AppShell({
         />
       )}
 
-      {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* Mobile top bar */}
         <div className="lg:hidden h-14 flex items-center justify-between px-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
           <button
             onClick={() => setDrawerOpen(true)}

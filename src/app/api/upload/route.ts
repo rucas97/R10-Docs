@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { generateWithFallback } from '@/lib/gemini';
+import { generateText } from '@/lib/llm';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     let summaryModel = '';
     try {
       const excerpt = documentText.slice(0, 15_000);
-      const { text, model } = await generateWithFallback({
+      const { text, provider: model } = await generateText({
         prompt:
           'این سند را در یک پاراگراف کوتاه (حداکثر ۳ جمله) به فارسی خلاصه کن. ' +
           'فقط خود خلاصه را بنویس، بدون مقدمه یا عنوان:\n\n' + excerpt,
