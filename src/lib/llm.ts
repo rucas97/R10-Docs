@@ -167,6 +167,28 @@ async function genGroq(p: Provider, o: GenOpts): Promise<string> {
 /**
  * Single pass through the provider chain.
  */
+
+function repairSummary(text: string): string {
+  if (!text) return text;
+  let t = text.trim();
+  if (!t) return t;
+
+  // If the last character is a proper sentence terminator, we're done.
+  const terminators = ['.', '!', '?', '؟', '!', '۔', '…', '\u061F'];
+  if (terminators.some((c) => t.endsWith(c))) return t;
+
+  // Otherwise, cut back to the last terminator.
+  const lastIdx = Math.max(
+    t.lastIndexOf('.'),
+    t.lastIndexOf('!'),
+    t.lastIndexOf('?'),
+    t.lastIndexOf('؟'),
+    t.lastIndexOf('۔'),
+  );
+  if (lastIdx > 20) return t.slice(0, lastIdx + 1).trim();
+  return t;
+}
+
 export async function generateText(o: GenOpts): Promise<{ text: string; provider: string }> {
   const errors: string[] = [];
   for (const p of getOrdered()) {
@@ -212,7 +234,7 @@ export async function generateTextWithRetry(
       console.log(`[llm] summary round ${round + 1}/${maxRounds}`);
       const res = await generateText(o);
       if (res.text && res.text.length >= 20) {
-        return res;
+        return { ...res, text: repairSummary(res.text) };
       }
       console.warn(`[llm] summary too short (${res.text?.length ?? 0} chars), retrying`);
       lastErr = new Error('Summary too short');
