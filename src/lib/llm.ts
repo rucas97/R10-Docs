@@ -173,11 +173,13 @@ function repairSummary(text: string): string {
   let t = text.trim();
   if (!t) return t;
 
-  // If the last character is a proper sentence terminator, we're done.
-  const terminators = ['.', '!', '?', '؟', '!', '۔', '…', '\u061F'];
+  // Strip common trailing prefixes the model might append
+  t = t.replace(/^خلاصه\s*[:：]\s*/i, '').trim();
+
+  const terminators = ['.', '!', '?', '؟', '۔', '…', '\u061F'];
   if (terminators.some((c) => t.endsWith(c))) return t;
 
-  // Otherwise, cut back to the last terminator.
+  // Cut back to the last terminator
   const lastIdx = Math.max(
     t.lastIndexOf('.'),
     t.lastIndexOf('!'),
@@ -186,7 +188,13 @@ function repairSummary(text: string): string {
     t.lastIndexOf('۔'),
   );
   if (lastIdx > 20) return t.slice(0, lastIdx + 1).trim();
-  return t;
+
+  // No terminator anywhere — try last newline
+  const lastNl = t.lastIndexOf('\n');
+  if (lastNl > 30) return t.slice(0, lastNl).trim() + '.';
+
+  // Fallback: append a Persian period so it at least looks complete
+  return t + '.';
 }
 
 export async function generateText(o: GenOpts): Promise<{ text: string; provider: string }> {

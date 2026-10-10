@@ -55,7 +55,10 @@ export function ProfileMenu({ email }: { email: string }) {
           </button>
 
           <button
-            onClick={() => { setOpen(false); alert('تنظیمات به‌زودی'); }}
+            onClick={() => {
+              setOpen(false);
+              window.dispatchEvent(new CustomEvent('r10_open_settings'));
+            }}
             className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
           >
             <Settings className="w-3.5 h-3.5" />

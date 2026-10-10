@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
         'این سند را در یک پاراگراف کوتاه (حداکثر ۳ جمله) به زبان فارسی خلاصه کن. ' +
         'فقط خود خلاصه را بنویس، بدون مقدمه، عنوان، یا کلمه «خلاصه:». ' +
         'اگر متن سند فارسی نیست، خلاصه را به فارسی بنویس:\n\n' + documentText,
-      maxTokens: 800,
+      maxTokens: 1200,
     }, 4);
 
     // Generate 3 real, document-specific suggested questions

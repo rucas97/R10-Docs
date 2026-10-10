@@ -14,9 +14,11 @@ import { ChatInput } from './ChatInput';
 import { ChatHeader } from './ChatHeader';
 import { CommentSheet } from './CommentSheet';
 import { SummaryCard } from './SummaryCard';
+import { MindMapModal } from './MindMapModal';
+import { SettingsModal } from './settings/SettingsModal';
 
 type Msg = { id: string; role: 'user' | 'assistant'; content: string };
-type ChatMeta = { id: string; title: string; fileName: string; pageCount: number; summary: string; primaryLanguage: 'fa' | 'en'; suggestedQuestions: string[] };
+type ChatMeta = { id: string; title: string; fileName: string; pageCount: number; summary: string; primaryLanguage: 'fa' | 'en'; suggestedQuestions: string[]; mindmap: any };
 type OpenSourceFn = (citations: Citation[], index: number) => void;
 
 const MessageBubble = memo(function MessageBubble({
@@ -147,6 +149,8 @@ export function ChatPanel({
   const [currentPage, setCurrentPage] = useState(1);
   const [modal, setModal] = useState<{ citations: Citation[]; index: number } | null>(null);
   const [commentFor, setCommentFor] = useState<string | null>(null);
+  const [showMindmap, setShowMindmap] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
 
   const endRef = useRef<HTMLDivElement>(null);
@@ -217,8 +221,8 @@ export function ChatPanel({
   }, []);
 
   const handleAnalyze = useCallback((kind: 'analysis' | 'mindmap') => {
-    const label = kind === 'analysis' ? 'تحلیل سند' : 'نقشه ذهنی';
-    alert(`${label} به‌زودی اضافه می‌شود.`);
+    if (kind === 'mindmap') { setShowMindmap(true); return; }
+    alert('تحلیل سند به‌زودی اضافه می‌شود.');
   }, []);
 
   const chatColumn = (
@@ -318,6 +322,28 @@ export function ChatPanel({
           onCountChange={(n) => setCommentCounts((c) => ({ ...c, [commentFor]: n }))}
         />
       )}
+
+      {showMindmap && (
+        <MindMapModal
+          chatId={chat.id}
+          initial={chat.mindmap}
+          onClose={() => setShowMindmap(false)}
+        />
+      )}
+
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+
+      {/* Listen for global settings open event */}
+      <GlobalSettingsListener onOpen={() => setShowSettings(true)} />
     </>
   );
+}
+
+function GlobalSettingsListener({ onOpen }: { onOpen: () => void }) {
+  useEffect(() => {
+    const handler = () => onOpen();
+    window.addEventListener('r10_open_settings', handler);
+    return () => window.removeEventListener('r10_open_settings', handler);
+  }, [onOpen]);
+  return null;
 }
