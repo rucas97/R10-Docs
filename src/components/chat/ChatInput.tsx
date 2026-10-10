@@ -2,11 +2,11 @@
 
 import { useState, useRef, useEffect } from 'react';
 import {
-  Send, Paperclip, Lightbulb, Loader2, Mic, Plus,
-  Sparkles, TrendingUp, BarChart3,
+  Send, Lightbulb, Loader2, Mic, Plus,
+  TrendingUp, BarChart3,
 } from 'lucide-react';
 
-const SUGGESTIONS = [
+const FALLBACK_SUGGESTIONS = [
   'این سند را در سه نکته کلیدی خلاصه کن.',
   'نویسنده به چه نتیجه‌گیری اصلی رسیده است؟',
   'چالش‌ها و محدودیت‌های مطرح‌شده چیست؟',
@@ -14,14 +14,15 @@ const SUGGESTIONS = [
 
 export function ChatInput({
   onSend,
-  onNewChat,
   streaming,
   onAnalyze,
+  suggestions,
 }: {
   onSend: (text: string) => void;
-  onNewChat: () => void;
+  onNewChat?: () => void;
   streaming: boolean;
   onAnalyze: (kind: 'analysis' | 'mindmap') => void;
+  suggestions?: string[];
 }) {
   const [input, setInput] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -30,7 +31,10 @@ export function ChatInput({
   const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-grow textarea
+  const items = (suggestions && suggestions.length > 0)
+    ? suggestions
+    : FALLBACK_SUGGESTIONS;
+
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -39,9 +43,7 @@ export function ChatInput({
   }, [input]);
 
   const startListening = () => {
-    const SR =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
       alert('مرورگر شما از تبدیل گفتار به متن پشتیبانی نمی‌کند. از Chrome استفاده کنید.');
       return;
@@ -81,14 +83,14 @@ export function ChatInput({
     <div className="shrink-0 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-2.5 sm:p-4">
       <div className="max-w-3xl mx-auto min-w-0">
         {showSuggestions && (
-          <div className="mb-3 flex flex-wrap gap-2">
-            {SUGGESTIONS.map((s) => (
+          <div className="mb-3 flex flex-col gap-2">
+            {items.map((s) => (
               <button
                 key={s}
                 type="button"
                 onClick={() => { onSend(s); setShowSuggestions(false); }}
                 disabled={streaming}
-                className="text-xs px-3 py-2 rounded-xl bg-brand-50 dark:bg-slate-800 hover:bg-brand-100 dark:hover:bg-slate-700 border border-brand-200 dark:border-slate-700 text-brand-700 dark:text-brand-300 transition disabled:opacity-50"
+                className="text-right text-xs px-4 py-3 rounded-2xl bg-brand-50 dark:bg-slate-800 hover:bg-brand-100 dark:hover:bg-slate-700 border border-brand-200 dark:border-slate-700 text-brand-700 dark:text-brand-300 transition disabled:opacity-50 leading-relaxed"
               >
                 {s}
               </button>
@@ -96,10 +98,7 @@ export function ChatInput({
           </div>
         )}
 
-        {/* DeepSeek-style rounded container */}
         <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 transition p-2">
-
-          {/* Textarea */}
           <textarea
             ref={textareaRef}
             value={input}
@@ -116,20 +115,9 @@ export function ChatInput({
             className="w-full resize-none bg-transparent outline-none border-0 px-2 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 disabled:opacity-60"
           />
 
-          {/* Bottom actions row */}
           <div className="flex items-center justify-between gap-1 pt-1">
             <div className="flex items-center gap-0.5 relative">
-              {/* Attach (new chat) */}
-              <button
-                type="button"
-                onClick={onNewChat}
-                title="سند جدید"
-                className="w-9 h-9 rounded-2xl flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-700 transition"
-              >
-                <Paperclip className="w-4 h-4" />
-              </button>
-
-              {/* + menu (analyze / mindmap) */}
+              {/* + menu */}
               <button
                 type="button"
                 onClick={() => setShowMenu((v) => !v)}
@@ -162,7 +150,7 @@ export function ChatInput({
                 </div>
               )}
 
-              {/* Lightbulb suggestions */}
+              {/* Lightbulb */}
               <button
                 type="button"
                 onClick={() => setShowSuggestions((v) => !v)}
@@ -178,7 +166,6 @@ export function ChatInput({
             </div>
 
             <div className="flex items-center gap-1">
-              {/* Mic (speech to text) */}
               <button
                 type="button"
                 onClick={listening ? stopListening : startListening}
@@ -192,7 +179,6 @@ export function ChatInput({
                 <Mic className="w-4 h-4" />
               </button>
 
-              {/* Send */}
               <button
                 type="button"
                 onClick={submit}

@@ -5,7 +5,6 @@ import {
   ChevronRight, ChevronLeft, ExternalLink, FileText, PanelRightClose, PanelRightOpen,
 } from 'lucide-react';
 import { toPersianNumber } from '@/lib/citations';
-import { buildSearchQuery } from '@/lib/search-query';
 
 export default function PdfViewerInner({
   chatId,
@@ -21,7 +20,7 @@ export default function PdfViewerInner({
   primaryLanguage?: 'fa' | 'en';
   highlightSnippet?: string;
 }) {
-  const [showThumbs, setShowThumbs] = useState(true);
+  const [showThumbs, setShowThumbs] = useState(false);
   const [origin, setOrigin] = useState('');
 
   // Need origin on client (window is not available during SSR)
@@ -42,10 +41,17 @@ export default function PdfViewerInner({
     hash.set('zoom', 'page-width');
     if (showThumbs) hash.set('pagemode', 'thumbs');
     if (highlightSnippet && highlightSnippet.trim().length > 3) {
-      const q = buildSearchQuery(highlightSnippet, 6);
-      if (q) {
-        hash.set('search', q);
-        // No phrase=true — let PDF.js highlight each distinctive word
+      // Clean but keep the whole phrase — the LLM quote is usually a real substring
+      const cleaned = highlightSnippet
+        .replace(/[«»""„"'`]/g, '')
+        .replace(/[\u200C\u200D\u200E\u200F]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (cleaned.length > 3) {
+        // Truncate to avoid absurdly long queries
+        hash.set('search', cleaned.slice(0, 120));
+        // Use phrase search — PDF.js will try to match the full phrase first
+        hash.set('phrase', 'true');
       }
     }
 

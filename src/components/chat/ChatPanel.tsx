@@ -16,7 +16,7 @@ import { CommentSheet } from './CommentSheet';
 import { SummaryCard } from './SummaryCard';
 
 type Msg = { id: string; role: 'user' | 'assistant'; content: string };
-type ChatMeta = { id: string; title: string; fileName: string; pageCount: number; summary: string; primaryLanguage: 'fa' | 'en' };
+type ChatMeta = { id: string; title: string; fileName: string; pageCount: number; summary: string; primaryLanguage: 'fa' | 'en'; suggestedQuestions: string[] };
 type OpenSourceFn = (citations: Citation[], index: number) => void;
 
 const MessageBubble = memo(function MessageBubble({
@@ -244,9 +244,9 @@ export function ChatPanel({
 
       <ChatInput
         onSend={send}
-        onNewChat={() => router.push('/chat')}
         streaming={streaming}
         onAnalyze={handleAnalyze}
+        suggestions={chat.suggestedQuestions}
       />
     </div>
   );

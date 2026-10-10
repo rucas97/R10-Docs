@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { X, ChevronRight, ChevronLeft, FileText, Loader2, Quote } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, FileText, Loader2, } from 'lucide-react';
 import { toPersianNumber, type Citation } from '@/lib/citations';
 
 const PdfViewerInner = dynamic(() => import('./PdfViewerInner'), {
@@ -81,17 +81,7 @@ export function SourceModal({
           </div>
         </div>
 
-        {snippet && (
-          <div className="shrink-0 px-4 py-3 bg-amber-50/70 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900">
-            <div className="flex items-start gap-2">
-              <Quote className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-              <p className="text-xs leading-relaxed text-amber-900 dark:text-amber-200">
-                «{snippet}»
-              </p>
-            </div>
-          </div>
-        )}
-
+        
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-slate-200 dark:bg-slate-950">
           <PdfViewerInner
             chatId={chatId}

@@ -18,6 +18,7 @@ export default function LandingPage() {
   const [isDark, setIsDark] = useState(false);
   const [uploadMode, setUploadMode] = useState<UploadMode>('file');
   const [user, setUser] = useState<{ email: string } | null>(null);
+  const [avatarMenu, setAvatarMenu] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -118,18 +119,57 @@ export default function LandingPage() {
               </button>
             )}
 
-            {/* Avatar (signed in) — shows initial always, email on desktop */}
+            {/* Avatar (signed in) — opens menu */}
             {user && (
-              <button
-                onClick={goToChat}
-                title={user.email}
-                className="text-xs md:text-sm font-bold h-9 sm:h-auto sm:px-3 sm:py-1.5 rounded-full sm:rounded-xl bg-brand-50 dark:bg-brand-950 border border-brand-200 dark:border-brand-800 hover:bg-brand-100 dark:hover:bg-brand-900 transition flex items-center justify-center gap-2 shrink-0 text-brand-700 dark:text-brand-300"
-              >
-                <span className="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center text-[11px] font-black">
+              <div className="relative shrink-0">
+                <button
+                  onClick={() => setAvatarMenu((v) => !v)}
+                  title={user.email}
+                  className="w-9 h-9 rounded-full bg-brand-600 hover:bg-brand-700 text-white flex items-center justify-center text-[11px] font-black transition focus:outline-none"
+                >
                   {(user.email[0] ?? '?').toUpperCase()}
-                </span>
-                <span className="hidden sm:inline max-w-[140px] truncate" dir="ltr">{user.email}</span>
-              </button>
+                </button>
+
+                {avatarMenu && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setAvatarMenu(false)} />
+                    <div className="absolute top-12 left-0 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50">
+                      <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-0.5">حساب کاربری</p>
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate" dir="ltr">
+                          {user.email}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => { setAvatarMenu(false); goToChat(); }}
+                        className="w-full text-right px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                      >
+                        پنل کاربری
+                      </button>
+                      <button
+                        onClick={() => { setAvatarMenu(false); alert('تنظیمات به‌زودی'); }}
+                        className="w-full text-right px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                      >
+                        تنظیمات
+                      </button>
+                      <div className="border-t border-slate-100 dark:border-slate-800" />
+                      <button
+                        onClick={async () => {
+                          setAvatarMenu(false);
+                          const { createClient } = await import('@/lib/supabase/client');
+                          const supabase = createClient();
+                          await supabase.auth.signOut();
+                          setUser(null);
+                          router.refresh();
+                        }}
+                        className="w-full text-right px-4 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
+                      >
+                        خروج از حساب
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             )}
           </div>
         </div>

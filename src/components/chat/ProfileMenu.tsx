@@ -32,7 +32,7 @@ export function ProfileMenu({ email }: { email: string }) {
       <button
         onClick={() => setOpen((v) => !v)}
         title={email}
-        className="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs font-black hover:opacity-90 transition"
+        className="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs font-black hover:opacity-90 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
       >
         {(email[0] ?? '?').toUpperCase()}
       </button>
