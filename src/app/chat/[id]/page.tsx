@@ -18,12 +18,17 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
 
   const { data: messages } = await supabase
     .from('messages')
-    .select('id, role, content, created_at')
+    .select('id, role, content, created_at, reply_to_id')
     .eq('chat_id', id)
     .order('created_at', { ascending: true });
 
-  // Serve via our own domain so no CORS issues on mobile
   const pdfUrl = chat.file_path ? `/api/pdf/${chat.id}` : null;
+
+  // Build a parent lookup: messageId → { role, content }
+  const lookup: Record<string, { role: 'user' | 'assistant'; content: string }> = {};
+  for (const m of (messages ?? [])) {
+    lookup[m.id] = { role: m.role as 'user' | 'assistant', content: m.content };
+  }
 
   return (
     <ChatPanel
@@ -44,7 +49,9 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
         id: m.id,
         role: m.role as 'user' | 'assistant',
         content: m.content,
+        replyToId: m.reply_to_id ?? null,
       }))}
+      messageLookup={lookup}
     />
   );
 }

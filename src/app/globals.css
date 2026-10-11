@@ -44,11 +44,14 @@
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
 .dark ::-webkit-scrollbar-thumb { background: #334155; }
 
-@keyframes mic-bar {
-  0%, 100% { height: 4px; opacity: 0.5; }
-  50% { height: 18px; opacity: 1; }
+
+
+/* Mic recording wave — bars grow and shrink in a traveling pattern */
+@keyframes mic-wave {
+  0%, 100% { height: 6px; opacity: 0.35; }
+  50%      { height: 26px; opacity: 1; }
 }
-.animate-mic-bar {
-  animation: mic-bar 0.9s ease-in-out infinite;
-  height: 8px;
+.mic-wave-bar {
+  animation: mic-wave 1.1s ease-in-out infinite;
+  height: 6px;
 }

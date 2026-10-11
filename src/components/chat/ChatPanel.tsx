@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import {
   Bot, User as UserIcon, Sparkles, X,
   MessageSquare, BookOpen, Copy, Check, RefreshCw, MessageCircle,
-  Reply,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { extractCitations, toPersianNumber, type Citation } from '@/lib/citations';
@@ -18,18 +17,41 @@ import { SummaryCard } from './SummaryCard';
 import { MindMapModal } from './MindMapModal';
 import { SettingsModal } from './settings/SettingsModal';
 
-type Msg = { id: string; role: 'user' | 'assistant'; content: string };
+type Msg = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  replyToId?: string | null;
+};
 type ChatMeta = { id: string; title: string; fileName: string; pageCount: number; summary: string; primaryLanguage: 'fa' | 'en'; suggestedQuestions: string[]; mindmap: any };
 type OpenSourceFn = (citations: Citation[], index: number) => void;
+type Lookup = Record<string, { role: 'user' | 'assistant'; content: string }>;
+
+// Double-line curved reply arrow (custom SVG)
+function ReplyArrow({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         strokeWidth="1.6" className={className}>
+      {/* Outer curve */}
+      <path d="M20 19c0-5-3.5-9-9-9H5" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Inner curve (double-line effect) */}
+      <path d="M20 15c0-3.5-2.5-6-6-6H5" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
+      {/* Arrowhead */}
+      <path d="M8 5l-4 5 4 5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 const MessageBubble = memo(function MessageBubble({
   msg,
+  lookup,
   onOpenSource,
   onRegenerate,
   onComment,
   onReply,
 }: {
   msg: Msg;
+  lookup: Lookup;
   onOpenSource: OpenSourceFn;
   onRegenerate: (msg: Msg) => void;
   onComment: (msg: Msg) => void;
@@ -43,30 +65,65 @@ const MessageBubble = memo(function MessageBubble({
     [msg.content, isUser]
   );
 
+  const replyParent = msg.replyToId ? lookup[msg.replyToId] : null;
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(parsed.content);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch (e) { console.error('copy failed:', e); }
+    } catch {}
   };
 
   const isStreaming = !isUser && !parsed.content;
 
   return (
-    <div className={`flex items-start gap-2.5 sm:gap-3 ${isUser ? '' : 'flex-row-reverse'}`}>
+    <div className={`group/bubble flex items-start gap-2.5 sm:gap-3 ${isUser ? '' : 'flex-row-reverse'}`}>
       <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
         isUser ? 'bg-brand-600 text-white' : 'bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300'
       }`}>
         {isUser ? <UserIcon className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
       </div>
 
-      <div className={`max-w-[85%] min-w-0 ${isUser ? 'flex flex-col items-end' : ''}`}>
+      {/* Wrapper: bubble + side reply arrow */}
+      <div className={`relative max-w-[85%] min-w-0 ${isUser ? 'flex flex-col items-end' : ''}`}>
+        {/* Reply arrow — sits on the OUTER edge of the bubble */}
+        {parsed.content && !isStreaming && (
+          <button
+            onClick={() => onReply(msg)}
+            title="پاسخ به این پیام"
+            className={`absolute top-2 z-10 w-7 h-7 rounded-full flex items-center justify-center
+              text-slate-300 dark:text-slate-600
+              hover:text-brand-600 dark:hover:text-brand-400
+              hover:bg-brand-50 dark:hover:bg-slate-800
+              opacity-0 group-hover/bubble:opacity-100 focus:opacity-100
+              transition-all duration-150 ${
+                isUser ? '-start-9' : '-end-9'
+              }`}
+          >
+            <ReplyArrow className="w-4 h-4" />
+          </button>
+        )}
+
         <div className={`rounded-2xl px-3.5 py-2.5 sm:px-4 sm:py-3 text-sm leading-relaxed break-words ${
           isUser
             ? 'bg-brand-600 text-white rounded-tr-md'
             : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-tl-md'
         }`}>
+          {/* Reply parent quote — inside the bubble at the top */}
+          {replyParent && (
+            <div className={`mb-2 px-2.5 py-1.5 rounded-lg text-[11px] leading-relaxed border-e-2 ${
+              isUser
+                ? 'bg-white/15 border-white/60 text-white/90'
+                : 'bg-brand-50/70 dark:bg-brand-950/40 border-brand-500 text-slate-600 dark:text-slate-300'
+            }`}>
+              <p className={`font-black mb-0.5 ${isUser ? 'text-white/80' : 'text-brand-700 dark:text-brand-300'}`}>
+                {replyParent.role === 'user' ? 'شما' : 'دستیار'}
+              </p>
+              <p className="line-clamp-2">{replyParent.content.slice(0, 140) || '—'}</p>
+            </div>
+          )}
+
           {isUser ? (
             <p className="whitespace-pre-wrap break-words">{msg.content}</p>
           ) : isStreaming ? (
@@ -80,7 +137,7 @@ const MessageBubble = memo(function MessageBubble({
               <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 break-words">
                 <ReactMarkdown>{parsed.content}</ReactMarkdown>
               </div>
-              {/* Citations INSIDE the bubble */}
+
               {parsed.citations.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-slate-200/80 dark:border-slate-700/80 flex items-center flex-wrap gap-1.5">
                   <span className="text-[10px] font-black text-amber-700 dark:text-amber-400">منابع:</span>
@@ -99,17 +156,9 @@ const MessageBubble = memo(function MessageBubble({
           )}
         </div>
 
-        {/* Action row — outside the bubble, on the side */}
+        {/* Action row — below the bubble */}
         {parsed.content && !isStreaming && (
           <div className={`mt-2 flex items-center flex-wrap gap-1.5 ${isUser ? 'justify-start flex-row-reverse' : ''}`}>
-            <button
-              onClick={() => onReply(msg)}
-              title="پاسخ"
-              className="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-slate-800 transition opacity-60 hover:opacity-100"
-            >
-              <Reply className="w-3.5 h-3.5 -scale-x-100" />
-            </button>
-
             <button
               onClick={handleCopy}
               title={copied ? 'کپی شد' : 'کپی'}
@@ -132,7 +181,6 @@ const MessageBubble = memo(function MessageBubble({
                   <MessageCircle className="w-3 h-3" />
                   <span>یادداشت</span>
                 </button>
-
                 <button
                   onClick={() => onRegenerate(msg)}
                   className="text-[11px] px-2.5 py-1 rounded-lg border bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 font-bold flex items-center gap-1 transition"
@@ -150,23 +198,24 @@ const MessageBubble = memo(function MessageBubble({
 });
 
 export function ChatPanel({
-  chat, pdfUrl, initialMessages,
+  chat, pdfUrl, initialMessages, messageLookup,
 }: {
   chat: ChatMeta;
   pdfUrl: string | null;
   initialMessages: Msg[];
+  messageLookup: Lookup;
 }) {
   const router = useRouter();
   const [messages, setMessages] = useState<Msg[]>(initialMessages);
+  const [lookup, setLookup] = useState<Lookup>(messageLookup);
   const [streaming, setStreaming] = useState(false);
   const [viewMode, setViewMode] = useState<'chat' | 'reader'>('chat');
   const [currentPage, setCurrentPage] = useState(1);
   const [modal, setModal] = useState<{ citations: Citation[]; index: number } | null>(null);
   const [commentFor, setCommentFor] = useState<string | null>(null);
   const [showMindmap, setShowMindmap] = useState(false);
-  const [replyTarget, setReplyTarget] = useState<{ id: string; content: string } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const [replyTarget, setReplyTarget] = useState<{ id: string; content: string; role: 'user' | 'assistant' } | null>(null);
 
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -181,14 +230,28 @@ export function ChatPanel({
     setStreaming(true);
     setViewMode('chat');
 
-    const userMsg: Msg = { id: `local-${Date.now()}`, role: 'user', content };
+    const userMsg: Msg = {
+      id: `local-${Date.now()}`,
+      role: 'user',
+      content,
+      replyToId: replyTarget?.id ?? null,
+    };
     const assistantId = `local-${Date.now() + 1}`;
+    const capturedReply = replyTarget;
 
     let payload: Msg[] = [];
     setMessages((prev) => {
       payload = [...prev, userMsg];
       return [...prev, userMsg, { id: assistantId, role: 'assistant', content: '' }];
     });
+
+    // Register user in lookup so reply references resolve immediately
+    if (capturedReply) {
+      setLookup((l) => ({
+        ...l,
+        [userMsg.id]: { role: 'user', content },
+      }));
+    }
 
     try {
       await new Promise((r) => setTimeout(r, 0));
@@ -198,7 +261,7 @@ export function ChatPanel({
         body: JSON.stringify({
           chatId: chat.id,
           messages: payload.map((m) => ({ role: m.role, content: m.content })),
-          replyToId: replyTarget?.id ?? null,
+          replyToId: capturedReply?.id ?? null,
         }),
       });
       if (!res.ok || !res.body) throw new Error('Request failed');
@@ -222,12 +285,10 @@ export function ChatPanel({
   }, [chat.id, router, streaming, replyTarget]);
 
   const regenerate = useCallback((msg: Msg) => {
-    // Find the user message right before this assistant message, resend it
     const idx = messages.findIndex((m) => m.id === msg.id);
     if (idx < 1) return;
     const prevUser = messages[idx - 1];
     if (prevUser.role !== 'user') return;
-    // Remove the assistant reply + send again
     setMessages((m) => m.filter((x) => x.id !== msg.id));
     setTimeout(() => send(prevUser.content), 100);
   }, [messages, send]);
@@ -254,10 +315,11 @@ export function ChatPanel({
             <MessageBubble
               key={m.id}
               msg={m}
+              lookup={lookup}
               onOpenSource={openSource}
               onRegenerate={regenerate}
               onComment={(msg) => setCommentFor(msg.id)}
-              onReply={(msg) => setReplyTarget({ id: msg.id, content: msg.content })}
+              onReply={(msg) => setReplyTarget({ id: msg.id, content: msg.content, role: msg.role })}
             />
           ))}
           <div ref={endRef} />
@@ -339,21 +401,16 @@ export function ChatPanel({
         <CommentSheet
           messageId={commentFor}
           onClose={() => setCommentFor(null)}
-          onCountChange={(n) => setCommentCounts((c) => ({ ...c, [commentFor]: n }))}
+          onCountChange={() => {}}
         />
       )}
 
       {showMindmap && (
-        <MindMapModal
-          chatId={chat.id}
-          initial={chat.mindmap}
-          onClose={() => setShowMindmap(false)}
-        />
+        <MindMapModal chatId={chat.id} initial={chat.mindmap} onClose={() => setShowMindmap(false)} />
       )}
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
 
-      {/* Listen for global settings open event */}
       <GlobalSettingsListener onOpen={() => setShowSettings(true)} />
     </>
   );

@@ -25,7 +25,7 @@ export function ChatInput({
   streaming: boolean;
   onAnalyze: (kind: 'analysis' | 'mindmap') => void;
   suggestions?: string[];
-  replyTo?: { id: string; content: string } | null;
+  replyTo?: { id: string; content: string; role: 'user' | 'assistant' } | null;
   onCancelReply?: () => void;
 }) {
   const prefs = usePrefs();
@@ -135,18 +135,25 @@ export function ChatInput({
     <div className="shrink-0 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-2.5 sm:p-4">
       <div className="max-w-3xl mx-auto min-w-0">
 
-        {/* Reply preview */}
+        {/* Reply preview — sticky above the input */}
         {replyTo && (
-          <div className="mb-2 flex items-start gap-2 px-3 py-2 rounded-2xl bg-brand-50 dark:bg-brand-950/40 border border-brand-200 dark:border-brand-800">
+          <div className="mb-2 flex items-start gap-2 px-3 py-2 rounded-2xl bg-brand-50 dark:bg-brand-950/40 border border-brand-200 dark:border-brand-800 border-e-4 border-e-brand-500">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+                 className="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0 mt-0.5">
+              <path d="M9 17l-5-5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M4 12h9a6 6 0 0 1 6 6v1" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M4 12h7a8 8 0 0 1 8 8" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
+            </svg>
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-black text-brand-700 dark:text-brand-300 mb-0.5">
-                پاسخ به این پیام:
+                {replyTo.role === 'user' ? 'پاسخ به پیام شما' : 'پاسخ به دستیار'}
               </p>
-              <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate">
-                {replyTo.content.slice(0, 120)}
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+                {replyTo.content.slice(0, 160) || '—'}
               </p>
             </div>
-            <button onClick={onCancelReply} className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition shrink-0">
+            <button onClick={onCancelReply}
+              className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition shrink-0">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
