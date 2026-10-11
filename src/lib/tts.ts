@@ -18,6 +18,9 @@ export async function speak(text: string, onEnd?: () => void): Promise<boolean> 
         detail = data.error || '';
       } catch {}
       console.error('[tts] server error:', res.status, detail);
+      if (res.status === 500 && detail.includes('AI_GATEWAY_API_KEY')) {
+        alert('کلید Vercel AI Gateway تنظیم نشده است. برای فعال‌سازی صدای فارسی، AI_GATEWAY_API_KEY را در Vercel تنظیم کنید.');
+      }
       onEnd?.();
       return false;
     }

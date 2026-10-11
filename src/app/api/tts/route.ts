@@ -4,75 +4,59 @@ import { createClient } from '@/lib/supabase/server';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-// Google Translate TTS endpoint — free, no key, supports Persian.
-// Hard limit: ~200 chars per request. We chunk at 180 to be safe.
-const GTTS = 'https://translate.google.com/translate_tts';
-const CHUNK_SIZE = 180;
-const MAX_TEXT = 3000;
+// Vercel AI Gateway — free tier models that live in Vercel's infra.
+// Fish Audio S2 Pro supports Persian and is free per Vercel docs.
+const GATEWAY = 'https://ai-gateway.vercel.sh/v4/ai/speech-model';
+const PRIMARY_MODEL = 'fish-audio/s2-pro-free';
+const FALLBACK_MODEL = 'openai/tts-1';
+const MAX_TEXT = 2000;
 
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
-
-function chunkText(text: string): string[] {
-  // Prefer breaking at sentence boundaries (Persian: ., !, ?, ؟, ؛, ،)
-  const chunks: string[] = [];
-  const sentences = text.split(/(?<=[.!?؟۔])\s+/);
-  let current = '';
-
-  const pushCurrent = () => {
-    if (current.trim()) chunks.push(current.trim());
-    current = '';
+async function synthesize(
+  text: string,
+  model: string,
+  apiKey: string
+): Promise<{ audio?: Buffer; error?: string; status?: number }> {
+  const body: any = {
+    text,
+    outputFormat: 'mp3',
   };
 
-  for (const sentence of sentences) {
-    if (sentence.length > CHUNK_SIZE) {
-      // Long sentence: split by word
-      pushCurrent();
-      const words = sentence.split(/\s+/);
-      for (const w of words) {
-        if ((current + ' ' + w).trim().length > CHUNK_SIZE) pushCurrent();
-        current = (current ? current + ' ' : '') + w;
-      }
-    } else if ((current + ' ' + sentence).trim().length > CHUNK_SIZE) {
-      pushCurrent();
-      current = sentence;
-    } else {
-      current = (current ? current + ' ' : '') + sentence;
-    }
+  // openai/tts-1 requires a voice; fish-audio auto-detects but accepts one
+  if (model === 'openai/tts-1') {
+    body.voice = 'alloy';
+  } else {
+    // fish-audio: use a generic default voice; model auto-adapts to language
+    body.voice = 'default';
   }
-  pushCurrent();
-
-  return chunks.filter(Boolean);
-}
-
-async function fetchChunk(chunk: string): Promise<Buffer | null> {
-  const params = new URLSearchParams({
-    ie: 'UTF-8',
-    q: chunk,
-    tl: 'fa',
-    client: 'tw-ob',
-    ttsspeed: '0.95',
-  });
-
-  const url = `${GTTS}?${params.toString()}`;
 
   try {
-    const res = await fetch(url, {
+    const res = await fetch(GATEWAY, {
+      method: 'POST',
       headers: {
-        'User-Agent': UA,
-        'Referer': 'https://translate.google.com/',
+        'Authorization': `Bearer ${apiKey}`,
+        'ai-model-id': model,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify(body),
     });
 
     if (!res.ok) {
-      console.warn('[tts] google chunk failed:', res.status);
-      return null;
+      const detail = await res.text().catch(() => '');
+      console.warn(`[tts] ${model} → ${res.status}:`, detail.slice(0, 200));
+      return { error: `${res.status}: ${detail.slice(0, 120)}`, status: res.status };
     }
 
-    const ab = await res.arrayBuffer();
-    return Buffer.from(ab);
+    const data = await res.json();
+    if (!data?.audio) {
+      return { error: 'no audio in response' };
+    }
+
+    const buf = Buffer.from(data.audio, 'base64');
+    console.log(`[tts] ${model} → ${buf.length} bytes`);
+    return { audio: buf };
   } catch (e: any) {
-    console.warn('[tts] fetch error:', e?.message);
-    return null;
+    console.warn(`[tts] ${model} fetch error:`, e?.message);
+    return { error: e?.message ?? 'fetch failed' };
   }
 }
 
@@ -81,6 +65,14 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const apiKey = process.env.AI_GATEWAY_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'AI_GATEWAY_API_KEY not set on server' },
+        { status: 500 }
+      );
+    }
 
     const { text } = await req.json();
     if (!text || typeof text !== 'string') {
@@ -99,29 +91,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Empty text' }, { status: 400 });
     }
 
-    const chunks = chunkText(cleaned);
-    console.log(`[tts] ${cleaned.length} chars → ${chunks.length} chunks`);
+    console.log(`[tts] request ${cleaned.length} chars`);
 
-    // Sequential to avoid Google rate-limiting. Each chunk ~0.3-0.8s.
-    const buffers: Buffer[] = [];
-    for (let i = 0; i < chunks.length; i++) {
-      const buf = await fetchChunk(chunks[i]);
-      if (buf) buffers.push(buf);
-      else console.warn(`[tts] chunk ${i} failed`);
+    // Try primary, then fallback
+    let result = await synthesize(cleaned, PRIMARY_MODEL, apiKey);
+    if (!result.audio) {
+      console.warn('[tts] primary failed, trying fallback');
+      result = await synthesize(cleaned, FALLBACK_MODEL, apiKey);
     }
 
-    if (buffers.length === 0) {
-      return NextResponse.json({ error: 'Google TTS failed for all chunks' }, { status: 502 });
+    if (!result.audio) {
+      return NextResponse.json(
+        { error: result.error || 'All TTS models failed' },
+        { status: 502 }
+      );
     }
 
-    const audio = Buffer.concat(buffers);
-    console.log(`[tts] ✅ ${buffers.length}/${chunks.length} chunks, ${audio.length} bytes`);
-
-    return new NextResponse(audio, {
+    const audioBytes = new Uint8Array(result.audio);
+    return new NextResponse(audioBytes, {
       status: 200,
       headers: {
         'Content-Type': 'audio/mpeg',
-        'Content-Length': String(audio.length),
+        'Content-Length': String(audioBytes.byteLength),
         'Cache-Control': 'private, max-age=3600',
       },
     });
