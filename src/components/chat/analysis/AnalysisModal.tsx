@@ -218,6 +218,52 @@ export function AnalysisModal({
                 </div>
               )}
 
+              {/* Data table from charts */}
+              {analysis.charts && analysis.charts.length > 0 && (
+                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6">
+                  <h2 className="text-sm font-black text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-500" />
+                    تحلیل جدولی
+                  </h2>
+                  <div className="space-y-6">
+                    {analysis.charts.map((c: any, idx: number) => (
+                      <div key={idx}>
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                          {c.title}{c.unit ? ` (${c.unit})` : ''}
+                        </p>
+                        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                          <table className="w-full text-xs">
+                            <thead className="bg-slate-50 dark:bg-slate-950/60">
+                              <tr>
+                                <th className="text-right px-3 py-2 font-black text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800 w-8">#</th>
+                                <th className="text-right px-3 py-2 font-black text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">دسته</th>
+                                <th className="text-right px-3 py-2 font-black text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">مقدار</th>
+                                <th className="text-right px-3 py-2 font-black text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">درصد</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(() => {
+                                const total = c.data.reduce((s: number, d: any) => s + d.value, 0);
+                                return c.data.map((d: any, i: number) => (
+                                  <tr key={i} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                                    <td className="px-3 py-2 text-slate-400">{i + 1}</td>
+                                    <td className="px-3 py-2 font-semibold text-slate-800 dark:text-slate-200">{d.name}</td>
+                                    <td className="px-3 py-2 text-slate-700 dark:text-slate-300 font-bold">{d.value}</td>
+                                    <td className="px-3 py-2 text-slate-500 dark:text-slate-400">
+                                      {total > 0 ? ((d.value / total) * 100).toFixed(1) : '0'}٪
+                                    </td>
+                                  </tr>
+                                ));
+                              })()}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Figures */}
               {analysis.figures?.length > 0 && (
                 <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6">

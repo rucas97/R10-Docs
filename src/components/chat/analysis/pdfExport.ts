@@ -6,9 +6,7 @@ export async function exportElementToPdf(el: HTMLElement, filename: string) {
 
   try { await (document as any).fonts?.ready; } catch {}
 
-  // Clone the analysis content into an off-screen visible container.
-  // Never capture the live element — it may have overflow, transforms,
-  // or dark-mode classes that break html2canvas.
+  // Clone the analysis content off-screen
   const clone = el.cloneNode(true) as HTMLElement;
   const container = document.createElement('div');
   container.setAttribute('dir', 'rtl');
@@ -27,15 +25,22 @@ export async function exportElementToPdf(el: HTMLElement, filename: string) {
     'z-index: 1',
   ].join(';');
 
-  // Force light colors in the clone
+  // Force light mode
   clone.classList.remove('dark');
   clone.querySelectorAll('.dark').forEach((n) => n.classList.remove('dark'));
+
+  // Remove interactive elements before capture
+  clone.querySelectorAll('button, iframe, canvas[role="img"]').forEach((n) => {
+    // keep canvas — needed for charts — but drop buttons
+    if (n.tagName === 'BUTTON') n.remove();
+  });
+
   container.appendChild(clone);
   document.body.appendChild(container);
 
   try {
     await new Promise((r) => requestAnimationFrame(r));
-    await new Promise((r) => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 200));
 
     const canvas = await html2canvas(container, {
       scale: 2,
@@ -46,42 +51,53 @@ export async function exportElementToPdf(el: HTMLElement, filename: string) {
       height: container.scrollHeight,
       windowWidth: container.scrollWidth,
       windowHeight: container.scrollHeight,
-      scrollX: 0,
-      scrollY: 0,
-      onclone: (doc) => {
-        doc.documentElement.classList.remove('dark');
-      },
     });
+
+    console.log('[analysis-pdf] canvas:', canvas.width, 'x', canvas.height);
 
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pdfW = pdf.internal.pageSize.getWidth();
     const pdfH = pdf.internal.pageSize.getHeight();
-    const pageHeightInSrcPx = (pdfH / pdfW) * canvas.width;
+
+    // A4 aspect ratio in canvas pixels
+    const pxPerMm = canvas.width / pdfW;
+    const pageHeightInPx = Math.floor(pdfH * pxPerMm);
+
+    // Add a small safety margin so slicing doesn't split text awkwardly
+    // Reserve 8mm at the bottom of each page as white space
+    const bottomMarginPx = Math.floor(8 * pxPerMm);
+    const usableHeightPx = pageHeightInPx - bottomMarginPx;
 
     let srcY = 0;
     let pageNum = 0;
 
     while (srcY < canvas.height) {
-      const sliceH = Math.min(pageHeightInSrcPx, canvas.height - srcY);
+      const remaining = canvas.height - srcY;
+      const sliceH = Math.min(usableHeightPx, remaining);
 
       const slice = document.createElement('canvas');
       slice.width = canvas.width;
-      slice.height = sliceH;
+      slice.height = pageHeightInPx; // full page height so blank space is consistent
       const ctx = slice.getContext('2d');
       if (!ctx) break;
+
+      // White background
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, slice.width, slice.height);
+
+      // Draw the content slice at the top
       ctx.drawImage(canvas, 0, srcY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
 
       const imgData = slice.toDataURL('image/jpeg', 0.92);
-      const drawH = (sliceH / canvas.width) * pdfW;
 
       if (pageNum > 0) pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, drawH);
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
 
       srcY += sliceH;
       pageNum++;
     }
+
+    console.log('[analysis-pdf] pages:', pageNum);
 
     const blob = pdf.output('blob');
     const url = URL.createObjectURL(blob);
@@ -93,7 +109,7 @@ export async function exportElementToPdf(el: HTMLElement, filename: string) {
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   } catch (e: any) {
-    console.error('[export-pdf] failed:', e);
+    console.error('[analysis-pdf] failed:', e);
     alert('خروجی PDF ناموفق بود: ' + (e?.message || 'خطای نامشخص'));
   } finally {
     document.body.removeChild(container);

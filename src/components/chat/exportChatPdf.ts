@@ -13,16 +13,14 @@ export async function exportChatToPdf(fileName: string, messages: Msg[]) {
   const html2canvas = (await import('html2canvas-pro')).default;
   const { jsPDF } = await import('jspdf');
 
-  // Off-screen but fully visible to html2canvas.
-  // opacity:0 or z-index:-1 makes html2canvas render a blank canvas.
   const container = document.createElement('div');
   container.setAttribute('dir', 'rtl');
   container.style.cssText = [
     'position: absolute',
     'top: 0',
     'left: -9999px',
-    'width: 800px',
-    'padding: 40px',
+    'width: 900px',
+    'padding: 50px 60px',
     'background: #ffffff',
     'color: #0f172a',
     'font-family: Vazirmatn, system-ui, -apple-system, sans-serif',
@@ -32,38 +30,64 @@ export async function exportChatToPdf(fileName: string, messages: Msg[]) {
     'z-index: 1',
   ].join(';');
 
+  // Each message is a bubble row. User right, assistant left. Bubble max-width ~65%.
   const rows = messages.map((m) => {
     const isUser = m.role === 'user';
     const clean = escapeHtml(
       m.content.replace(/\[منابع:[^\]]+\]/g, '').trim() || '(بدون متن)'
     ).replace(/\n/g, '<br/>');
+
+    const alignment = isUser ? 'justify-content: flex-start;' : 'justify-content: flex-end;';
+    // In RTL: flex-start = right, flex-end = left
+    const bg = isUser ? '#7c3aed' : '#ffffff';
+    const color = isUser ? '#ffffff' : '#0f172a';
+    const border = isUser ? 'none' : '1px solid #e2e8f0';
+    const roleLabel = isUser ? 'شما' : 'دستیار';
+    const roleColor = isUser ? '#ffffff' : '#7c3aed';
+
     return `
-      <div style="margin-bottom: 16px; direction: rtl;">
-        <div style="font-size: 11px; font-weight: 800; color: ${isUser ? '#7c3aed' : '#4c1d95'}; margin-bottom: 6px;">
-          ${isUser ? '👤 شما' : '🤖 دستیار'}
-        </div>
+      <div style="
+        display: flex;
+        ${alignment}
+        margin-bottom: 20px;
+        width: 100%;
+        direction: rtl;
+      ">
         <div style="
-          padding: 12px 16px;
-          background: ${isUser ? '#f5f3ff' : '#ffffff'};
-          border: 1px solid ${isUser ? '#ddd6fe' : '#e2e8f0'};
-          border-radius: 12px;
+          max-width: 65%;
+          padding: 14px 18px;
+          background: ${bg};
+          color: ${color};
+          border: ${border};
+          border-radius: 16px;
           font-size: 13px;
-          line-height: 1.9;
+          line-height: 1.85;
           word-wrap: break-word;
           direction: rtl;
           text-align: right;
-        ">${clean}</div>
+        ">
+          <div style="
+            font-size: 10px;
+            font-weight: 800;
+            color: ${roleColor};
+            margin-bottom: 6px;
+            opacity: 0.9;
+          ">${roleLabel}</div>
+          <div>${clean}</div>
+        </div>
       </div>
     `;
   }).join('');
 
   container.innerHTML = `
-    <div style="text-align: center; margin-bottom: 24px;">
-      <div style="display: inline-block; font-size: 24px; font-weight: 900; color: #6d28d9;">R10-Docs</div>
-      <div style="font-size: 12px; color: #64748b; margin-top: 4px;">${escapeHtml(fileName)}</div>
+    <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
+      <div style="display: inline-block; font-size: 26px; font-weight: 900; color: #6d28d9;">R10-Docs</div>
+      <div style="font-size: 13px; color: #64748b; margin-top: 6px;">${escapeHtml(fileName)}</div>
     </div>
-    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 0 0 24px;" />
     ${rows}
+    <div style="text-align: center; margin-top: 30px; padding-top: 16px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8;">
+      تولید شده توسط R10-Docs
+    </div>
   `;
 
   document.body.appendChild(container);
@@ -71,9 +95,7 @@ export async function exportChatToPdf(fileName: string, messages: Msg[]) {
   try {
     try { await (document as any).fonts?.ready; } catch {}
     await new Promise((r) => requestAnimationFrame(r));
-    await new Promise((r) => setTimeout(r, 100));
-
-    console.log('[export] container size:', container.scrollWidth, 'x', container.scrollHeight);
+    await new Promise((r) => setTimeout(r, 150));
 
     const canvas = await html2canvas(container, {
       scale: 2,
@@ -84,11 +106,7 @@ export async function exportChatToPdf(fileName: string, messages: Msg[]) {
       height: container.scrollHeight,
       windowWidth: container.scrollWidth,
       windowHeight: container.scrollHeight,
-      scrollX: 0,
-      scrollY: 0,
     });
-
-    console.log('[export] canvas size:', canvas.width, 'x', canvas.height);
 
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pdfW = pdf.internal.pageSize.getWidth();
@@ -129,8 +147,6 @@ export async function exportChatToPdf(fileName: string, messages: Msg[]) {
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 5000);
-
-    console.log('[export] ✅ saved, pages:', pageNum);
   } catch (e: any) {
     console.error('[export] failed:', e);
     alert('خروجی PDF ناموفق بود: ' + (e?.message || 'خطای نامشخص'));
