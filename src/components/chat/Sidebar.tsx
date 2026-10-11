@@ -137,7 +137,7 @@ export function Sidebar({
   return (
     <div className="flex flex-col h-full relative">
       <div className="h-16 flex items-center px-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
-        <Link href="/chat" className="flex items-center gap-2.5" onClick={onClose}>
+        <Link href="/" className="flex items-center gap-2.5" onClick={onClose}>
           <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-brand-700 via-brand-600 to-indigo-500 text-white flex items-center justify-center">
             <span className="text-xs font-black">R10</span>
           </div>

@@ -54,7 +54,7 @@ export function AppShell({
           >
             <Menu className="w-5 h-5 text-slate-700 dark:text-slate-200" />
           </button>
-          <Link href="/chat" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-700 via-brand-600 to-indigo-500 text-white flex items-center justify-center">
               <Sparkles className="w-4 h-4" />
             </div>

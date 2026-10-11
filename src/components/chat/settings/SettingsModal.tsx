@@ -26,7 +26,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" dir="rtl">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden">
         <div className="h-14 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800">

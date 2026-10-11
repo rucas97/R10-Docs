@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   Bot, User as UserIcon, Sparkles, X,
   MessageSquare, BookOpen, Copy, Check, RefreshCw, MessageCircle,
+  Reply,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { extractCitations, toPersianNumber, type Citation } from '@/lib/citations';
@@ -26,11 +27,13 @@ const MessageBubble = memo(function MessageBubble({
   onOpenSource,
   onRegenerate,
   onComment,
+  onReply,
 }: {
   msg: Msg;
   onOpenSource: OpenSourceFn;
   onRegenerate: (msg: Msg) => void;
   onComment: (msg: Msg) => void;
+  onReply: (msg: Msg) => void;
 }) {
   const isUser = msg.role === 'user';
   const [copied, setCopied] = useState(false);
@@ -73,30 +76,39 @@ const MessageBubble = memo(function MessageBubble({
               <span className="w-1.5 h-1.5 rounded-full bg-brand-400 dark:bg-brand-500 animate-bounce [animation-delay:0.3s]" />
             </div>
           ) : (
-            <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 break-words">
-              <ReactMarkdown>{parsed.content}</ReactMarkdown>
-            </div>
+            <>
+              <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 break-words">
+                <ReactMarkdown>{parsed.content}</ReactMarkdown>
+              </div>
+              {/* Citations INSIDE the bubble */}
+              {parsed.citations.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-slate-200/80 dark:border-slate-700/80 flex items-center flex-wrap gap-1.5">
+                  <span className="text-[10px] font-black text-amber-700 dark:text-amber-400">منابع:</span>
+                  {parsed.citations.map((c, i) => (
+                    <button
+                      key={`${c.page}-${i}`}
+                      onClick={() => onOpenSource(parsed.citations, i)}
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-950/60 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 font-bold transition"
+                    >
+                      ص {toPersianNumber(c.page)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
 
-        {/* Sources + actions under assistant messages */}
-        {!isUser && parsed.content && (
-          <div className="mt-2 flex items-center flex-wrap gap-1.5">
-            {parsed.citations.length > 0 && (
-              <>
-                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">منبع:</span>
-                {parsed.citations.map((c, i) => (
-                  <button
-                    key={`${c.page}-${i}`}
-                    onClick={() => onOpenSource(parsed.citations, i)}
-                    className="text-[11px] px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-950/60 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 font-bold transition"
-                  >
-                    ص {toPersianNumber(c.page)}
-                  </button>
-                ))}
-                <span className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-0.5" />
-              </>
-            )}
+        {/* Action row — outside the bubble, on the side */}
+        {parsed.content && !isStreaming && (
+          <div className={`mt-2 flex items-center flex-wrap gap-1.5 ${isUser ? 'justify-start flex-row-reverse' : ''}`}>
+            <button
+              onClick={() => onReply(msg)}
+              title="پاسخ"
+              className="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-slate-800 transition opacity-60 hover:opacity-100"
+            >
+              <Reply className="w-3.5 h-3.5 -scale-x-100" />
+            </button>
 
             <button
               onClick={handleCopy}
@@ -111,23 +123,25 @@ const MessageBubble = memo(function MessageBubble({
               <span>{copied ? 'کپی شد' : 'کپی'}</span>
             </button>
 
-            <button
-              onClick={() => onComment(msg)}
-              title="یادداشت"
-              className="text-[11px] px-2.5 py-1 rounded-lg border bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 font-bold flex items-center gap-1 transition"
-            >
-              <MessageCircle className="w-3 h-3" />
-              <span>یادداشت</span>
-            </button>
+            {!isUser && (
+              <>
+                <button
+                  onClick={() => onComment(msg)}
+                  className="text-[11px] px-2.5 py-1 rounded-lg border bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 font-bold flex items-center gap-1 transition"
+                >
+                  <MessageCircle className="w-3 h-3" />
+                  <span>یادداشت</span>
+                </button>
 
-            <button
-              onClick={() => onRegenerate(msg)}
-              title="بازتولید پاسخ"
-              className="text-[11px] px-2.5 py-1 rounded-lg border bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 font-bold flex items-center gap-1 transition"
-            >
-              <RefreshCw className="w-3 h-3" />
-              <span>بازتولید</span>
-            </button>
+                <button
+                  onClick={() => onRegenerate(msg)}
+                  className="text-[11px] px-2.5 py-1 rounded-lg border bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 font-bold flex items-center gap-1 transition"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>بازتولید</span>
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -150,6 +164,7 @@ export function ChatPanel({
   const [modal, setModal] = useState<{ citations: Citation[]; index: number } | null>(null);
   const [commentFor, setCommentFor] = useState<string | null>(null);
   const [showMindmap, setShowMindmap] = useState(false);
+  const [replyTarget, setReplyTarget] = useState<{ id: string; content: string } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
 
@@ -183,6 +198,7 @@ export function ChatPanel({
         body: JSON.stringify({
           chatId: chat.id,
           messages: payload.map((m) => ({ role: m.role, content: m.content })),
+          replyToId: replyTarget?.id ?? null,
         }),
       });
       if (!res.ok || !res.body) throw new Error('Request failed');
@@ -200,9 +216,10 @@ export function ChatPanel({
       setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, content: 'متأسفانه خطایی رخ داد.' } : x));
     } finally {
       setStreaming(false);
+      setReplyTarget(null);
       router.refresh();
     }
-  }, [chat.id, router, streaming]);
+  }, [chat.id, router, streaming, replyTarget]);
 
   const regenerate = useCallback((msg: Msg) => {
     // Find the user message right before this assistant message, resend it
@@ -240,6 +257,7 @@ export function ChatPanel({
               onOpenSource={openSource}
               onRegenerate={regenerate}
               onComment={(msg) => setCommentFor(msg.id)}
+              onReply={(msg) => setReplyTarget({ id: msg.id, content: msg.content })}
             />
           ))}
           <div ref={endRef} />
@@ -251,6 +269,8 @@ export function ChatPanel({
         streaming={streaming}
         onAnalyze={handleAnalyze}
         suggestions={chat.suggestedQuestions}
+        replyTo={replyTarget}
+        onCancelReply={() => setReplyTarget(null)}
       />
     </div>
   );

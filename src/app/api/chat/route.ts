@@ -7,12 +7,8 @@ export const maxDuration = 60;
 
 function friendlyError(message: string): string {
   const msg = (message || '').toLowerCase();
-  if (msg.includes('all providers failed')) {
-    return 'در حال حاضر امکان پاسخ‌دهی نیست. لطفاً بعداً دوباره تلاش کنید.';
-  }
-  if (msg.includes('429') || msg.includes('rate')) {
-    return 'سقف درخواست‌ها پر شده. چند لحظه صبر کنید.';
-  }
+  if (msg.includes('all providers failed')) return 'در حال حاضر امکان پاسخ‌دهی نیست. بعداً تلاش کنید.';
+  if (msg.includes('429') || msg.includes('rate')) return 'سقف درخواست‌ها پر شده. چند لحظه صبر کنید.';
   return 'خطایی از سمت ما رخ داد. لطفاً دوباره تلاش کنید.';
 }
 
@@ -22,7 +18,7 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { chatId, messages } = await req.json();
+    const { chatId, messages, replyToId } = await req.json();
     if (!chatId) return NextResponse.json({ error: 'Missing chatId' }, { status: 400 });
 
     const { data: chat } = await supabase
@@ -46,16 +42,29 @@ export async function POST(req: NextRequest) {
       '- فقط بر اساس محتوای سند پاسخ دهید\n' +
       '- اگر پاسخ در سند نیست، بگویید: «این اطلاعات در سند یافت نشد»\n' +
       '- مختصر و دقیق باشید\n' +
-      '- در انتهای هر پاسخ، شماره صفحات را با یک نقل قول کوتاه بنویسید:\n' +
-      '  [منابع: ص۳ «متن دقیق»، ص۷ «متن دیگر»]\n' +
-      '  - شماره‌ها با ارقام فارسی، نقل قول کلمه‌به‌کلمه از سند.';
+      '- در انتهای هر پاسخ: [منابع: ص۳ «متن»، ص۷ «متن»] با ارقام فارسی و نقل قول کلمه‌به‌کلمه';
 
     const lastMessage = messages[messages.length - 1];
+
+    // Insert user message with reply_to_id
     await supabase.from('messages').insert({
       chat_id: chatId,
       role: 'user',
       content: lastMessage.content,
+      reply_to_id: replyToId || null,
     });
+
+    // ⭐ Pre-insert an empty assistant row so refresh mid-stream doesn't lose it
+    const { data: assistantRow } = await supabase
+      .from('messages')
+      .insert({
+        chat_id: chatId,
+        role: 'assistant',
+        content: '',
+      })
+      .select('id')
+      .single();
+    const assistantMsgId = assistantRow?.id;
 
     const prior = messages.slice(0, -1);
     const history: { role: 'user' | 'assistant'; content: string }[] = [];
@@ -76,7 +85,10 @@ export async function POST(req: NextRequest) {
       stream = r.stream;
       usedProvider = r.provider;
     } catch (e: any) {
-      console.error('[chat] all providers failed:', e?.message);
+      // Clean up the placeholder if we never streamed anything
+      if (assistantMsgId) {
+        await supabase.from('messages').update({ content: friendlyError(e?.message ?? '') }).eq('id', assistantMsgId);
+      }
       return NextResponse.json({ error: friendlyError(e?.message ?? '') }, { status: 200 });
     }
 
@@ -92,14 +104,24 @@ export async function POST(req: NextRequest) {
           }
           controller.close();
 
-          await supabase.from('messages').insert({
-            chat_id: chatId,
-            role: 'assistant',
-            content: assistantFull || '(بدون پاسخ)',
-          });
+          // Update the pre-inserted row with the final content
+          if (assistantMsgId) {
+            await supabase
+              .from('messages')
+              .update({ content: assistantFull || '(بدون پاسخ)' })
+              .eq('id', assistantMsgId);
+          }
           await supabase.from('chats').update({ updated_at: new Date().toISOString() }).eq('id', chatId);
         } catch (error: any) {
-          controller.enqueue(encoder.encode('\n\n' + friendlyError(error?.message ?? '')));
+          // Save whatever we streamed so far, plus a friendly error
+          const friendly = '\n\n' + friendlyError(error?.message ?? '');
+          if (assistantMsgId) {
+            await supabase
+              .from('messages')
+              .update({ content: (assistantFull || '') + friendly })
+              .eq('id', assistantMsgId);
+          }
+          controller.enqueue(encoder.encode(friendly));
           controller.close();
         }
       },

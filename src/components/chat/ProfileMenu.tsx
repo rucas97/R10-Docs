@@ -38,7 +38,7 @@ export function ProfileMenu({ email }: { email: string }) {
       </button>
 
       {open && (
-        <div className="absolute bottom-10 left-0 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50">
+        <div className="absolute bottom-10 start-0 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-[60]">
           <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
             <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-0.5">حساب کاربری</p>
             <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate" dir="ltr">
