@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const MAX_TEXT = 1500;
+const MAX_TEXT = 2000;
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing text' }, { status: 400 });
     }
 
+    // Clean but preserve Latin characters so voipi can detect English segments
     const cleaned = text
       .replace(/\[منابع:[^\]]+\]/g, '')
       .replace(/[*_`#>]/g, '')
@@ -32,20 +33,19 @@ export async function POST(req: NextRequest) {
     const mod: any = await import('voipi');
     const VoiPi = mod.VoiPi || mod.default?.VoiPi || mod.default;
 
-    // Provider chain — Edge TTS first (best Persian quality), then Google TTS.
-    // Browser/macOS/Piper skipped since we're in a serverless Node runtime.
+    // Prefer Edge TTS (best Farsi neural voice), then Google TTS as fallback.
+    // voipi auto-detects script per-text and selects a matching voice.
     const voice = new VoiPi({
       providers: ['edge-tts', 'google-tts'],
     });
 
-    // voipi auto-detects Farsi script and picks fa-IR voice automatically
     const audio = await voice.toAudio(cleaned);
 
     if (!audio || !audio.data) {
+      console.error('[tts] no audio data');
       return NextResponse.json({ error: 'No audio returned' }, { status: 502 });
     }
 
-    // Normalize to a plain Uint8Array backed by an ArrayBuffer (not SharedArrayBuffer)
     const raw = audio.data instanceof Uint8Array ? audio.data : new Uint8Array(audio.data);
     const buf = new ArrayBuffer(raw.byteLength);
     new Uint8Array(buf).set(raw);
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (e: any) {
-    console.error('[tts] error:', e?.message, e?.stack?.slice(0, 300));
+    console.error('[tts] error:', e?.message, e?.stack?.slice(0, 400));
     return NextResponse.json(
       { error: e?.message || 'TTS failed' },
       { status: 500 }
