@@ -13,13 +13,14 @@ export async function exportChatToPdf(fileName: string, messages: Msg[]) {
   const html2canvas = (await import('html2canvas-pro')).default;
   const { jsPDF } = await import('jspdf');
 
-  // Create container IN the viewport but hidden — html2canvas needs visible layout
+  // Off-screen but fully visible to html2canvas.
+  // opacity:0 or z-index:-1 makes html2canvas render a blank canvas.
   const container = document.createElement('div');
   container.setAttribute('dir', 'rtl');
   container.style.cssText = [
-    'position: fixed',
+    'position: absolute',
     'top: 0',
-    'left: 0',
+    'left: -9999px',
     'width: 800px',
     'padding: 40px',
     'background: #ffffff',
@@ -28,9 +29,7 @@ export async function exportChatToPdf(fileName: string, messages: Msg[]) {
     'direction: rtl',
     'text-align: right',
     'box-sizing: border-box',
-    'opacity: 0',
-    'pointer-events: none',
-    'z-index: -1',
+    'z-index: 1',
   ].join(';');
 
   const rows = messages.map((m) => {
@@ -39,7 +38,7 @@ export async function exportChatToPdf(fileName: string, messages: Msg[]) {
       m.content.replace(/\[منابع:[^\]]+\]/g, '').trim() || '(بدون متن)'
     ).replace(/\n/g, '<br/>');
     return `
-      <div style="margin-bottom: 16px; page-break-inside: avoid; direction: rtl;">
+      <div style="margin-bottom: 16px; direction: rtl;">
         <div style="font-size: 11px; font-weight: 800; color: ${isUser ? '#7c3aed' : '#4c1d95'}; margin-bottom: 6px;">
           ${isUser ? '👤 شما' : '🤖 دستیار'}
         </div>
@@ -71,9 +70,8 @@ export async function exportChatToPdf(fileName: string, messages: Msg[]) {
 
   try {
     try { await (document as any).fonts?.ready; } catch {}
-
-    // Wait one frame for layout
     await new Promise((r) => requestAnimationFrame(r));
+    await new Promise((r) => setTimeout(r, 100));
 
     console.log('[export] container size:', container.scrollWidth, 'x', container.scrollHeight);
 
@@ -86,6 +84,8 @@ export async function exportChatToPdf(fileName: string, messages: Msg[]) {
       height: container.scrollHeight,
       windowWidth: container.scrollWidth,
       windowHeight: container.scrollHeight,
+      scrollX: 0,
+      scrollY: 0,
     });
 
     console.log('[export] canvas size:', canvas.width, 'x', canvas.height);
@@ -124,13 +124,13 @@ export async function exportChatToPdf(fileName: string, messages: Msg[]) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `chat-${fileName.replace(/\.pdf$/i, '') || 'export'}.pdf`;
+    a.download = `chat-${(fileName || 'export').replace(/\.pdf$/i, '')}.pdf`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 5000);
 
-    console.log('[export] ✅ pdf saved, pages:', pageNum);
+    console.log('[export] ✅ saved, pages:', pageNum);
   } catch (e: any) {
     console.error('[export] failed:', e);
     alert('خروجی PDF ناموفق بود: ' + (e?.message || 'خطای نامشخص'));

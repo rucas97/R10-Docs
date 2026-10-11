@@ -4,8 +4,6 @@ import { createClient } from '@/lib/supabase/server';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-// Vercel AI Gateway — free tier models that live in Vercel's infra.
-// Fish Audio S2 Pro supports Persian and is free per Vercel docs.
 const GATEWAY = 'https://ai-gateway.vercel.sh/v4/ai/speech-model';
 const PRIMARY_MODEL = 'fish-audio/s2-pro-free';
 const FALLBACK_MODEL = 'openai/tts-1';
@@ -21,13 +19,11 @@ async function synthesize(
     outputFormat: 'mp3',
   };
 
-  // openai/tts-1 requires a voice; fish-audio auto-detects but accepts one
+  // openai/tts-1 requires an explicit voice
   if (model === 'openai/tts-1') {
     body.voice = 'alloy';
-  } else {
-    // fish-audio: use a generic default voice; model auto-adapts to language
-    body.voice = 'default';
   }
+  // fish-audio/s2-pro-free: omit voice → uses default multilingual voice
 
   try {
     const res = await fetch(GATEWAY, {
@@ -35,6 +31,7 @@ async function synthesize(
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'ai-model-id': model,
+        'ai-gateway-protocol-version': '0.0.1',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
@@ -42,13 +39,13 @@ async function synthesize(
 
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
-      console.warn(`[tts] ${model} → ${res.status}:`, detail.slice(0, 200));
-      return { error: `${res.status}: ${detail.slice(0, 120)}`, status: res.status };
+      console.warn(`[tts] ${model} → ${res.status}:`, detail.slice(0, 300));
+      return { error: `${res.status}: ${detail.slice(0, 200)}`, status: res.status };
     }
 
     const data = await res.json();
     if (!data?.audio) {
-      return { error: 'no audio in response' };
+      return { error: 'no audio in response: ' + JSON.stringify(data).slice(0, 200) };
     }
 
     const buf = Buffer.from(data.audio, 'base64');
@@ -68,10 +65,7 @@ export async function POST(req: NextRequest) {
 
     const apiKey = process.env.AI_GATEWAY_API_KEY;
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'AI_GATEWAY_API_KEY not set on server' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'AI_GATEWAY_API_KEY not set' }, { status: 500 });
     }
 
     const { text } = await req.json();
@@ -87,22 +81,22 @@ export async function POST(req: NextRequest) {
       .trim()
       .slice(0, MAX_TEXT);
 
-    if (!cleaned) {
-      return NextResponse.json({ error: 'Empty text' }, { status: 400 });
-    }
+    if (!cleaned) return NextResponse.json({ error: 'Empty text' }, { status: 400 });
 
     console.log(`[tts] request ${cleaned.length} chars`);
 
-    // Try primary, then fallback
     let result = await synthesize(cleaned, PRIMARY_MODEL, apiKey);
+    let usedModel = PRIMARY_MODEL;
+
     if (!result.audio) {
-      console.warn('[tts] primary failed, trying fallback');
+      console.warn('[tts] primary failed, trying openai/tts-1');
       result = await synthesize(cleaned, FALLBACK_MODEL, apiKey);
+      usedModel = FALLBACK_MODEL;
     }
 
     if (!result.audio) {
       return NextResponse.json(
-        { error: result.error || 'All TTS models failed' },
+        { error: result.error || 'All TTS models failed', lastModel: usedModel },
         { status: 502 }
       );
     }
@@ -114,6 +108,7 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'audio/mpeg',
         'Content-Length': String(audioBytes.byteLength),
         'Cache-Control': 'private, max-age=3600',
+        'X-TTS-Model': usedModel,
       },
     });
   } catch (e: any) {
