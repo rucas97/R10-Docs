@@ -62,7 +62,10 @@ export function ChatInput({
 
     const rec = new SR();
     rec.lang = 'fa-IR';
-    rec.continuous = true;
+    // Android Chrome often ignores continuous=true and stops after one phrase.
+    // Use single-shot + restart loop instead.
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    rec.continuous = !isAndroid;
     rec.interimResults = true;
     rec.maxAlternatives = 1;
 

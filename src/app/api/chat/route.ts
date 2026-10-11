@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { chatId, messages, replyToId } = await req.json();
+    const { chatId, messages, replyToId, replyToContent, replyToRole } = await req.json();
     if (!chatId) return NextResponse.json({ error: 'Missing chatId' }, { status: 400 });
 
     const { data: chat } = await supabase
@@ -45,6 +45,19 @@ export async function POST(req: NextRequest) {
       '- در انتهای هر پاسخ: [منابع: ص۳ «متن»، ص۷ «متن»] با ارقام فارسی و نقل قول کلمه‌به‌کلمه';
 
     const lastMessage = messages[messages.length - 1];
+
+    // If user is replying to a specific message, prepend that context so the
+    // AI understands what the user is referring to.
+    let effectiveUserMessage = lastMessage.content;
+    if (replyToContent && replyToContent.trim().length > 0) {
+      const roleLabel = replyToRole === 'user' ? 'پیام قبلی کاربر' : 'پاسخ قبلی دستیار';
+      effectiveUserMessage =
+        `[${roleLabel} که کاربر به آن پاسخ می‌دهد]:\n` +
+        `"${replyToContent.slice(0, 800)}"\n\n` +
+        `[پاسخ/سوال جدید کاربر]:\n` +
+        lastMessage.content;
+      console.log('[chat] reply context included, parent length:', replyToContent.length);
+    }
 
     // Insert user message with reply_to_id
     await supabase.from('messages').insert({

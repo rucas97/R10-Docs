@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Bot, User as UserIcon, Sparkles, X,
-  MessageSquare, BookOpen, Copy, Check, RefreshCw, MessageCircle,
+  MessageSquare, BookOpen, Copy, Check, RefreshCw, MessageCircle, Reply,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { extractCitations, toPersianNumber, type Citation } from '@/lib/citations';
@@ -28,28 +28,8 @@ type ChatMeta = { id: string; title: string; fileName: string; pageCount: number
 type OpenSourceFn = (citations: Citation[], index: number) => void;
 type Lookup = Record<string, { role: 'user' | 'assistant'; content: string }>;
 
-// Double-line curved reply arrow (custom SVG)
-function ReplyArrow({ className = '' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         strokeWidth="1.6" className={className}>
-      {/* Outer curve */}
-      <path d="M20 19c0-5-3.5-9-9-9H5" strokeLinecap="round" strokeLinejoin="round" />
-      {/* Inner curve (double-line effect) */}
-      <path d="M20 15c0-3.5-2.5-6-6-6H5" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
-      {/* Arrowhead */}
-      <path d="M8 5l-4 5 4 5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 const MessageBubble = memo(function MessageBubble({
-  msg,
-  lookup,
-  onOpenSource,
-  onRegenerate,
-  onComment,
-  onReply,
+  msg, lookup, onOpenSource, onRegenerate, onComment, onReply,
 }: {
   msg: Msg;
   lookup: Lookup;
@@ -67,6 +47,7 @@ const MessageBubble = memo(function MessageBubble({
   );
 
   const replyParent = msg.replyToId ? lookup[msg.replyToId] : null;
+  const isStreaming = !isUser && !parsed.content;
 
   const handleCopy = async () => {
     try {
@@ -76,44 +57,20 @@ const MessageBubble = memo(function MessageBubble({
     } catch {}
   };
 
-  const isStreaming = !isUser && !parsed.content;
-
   return (
-    <div className={`group/bubble flex items-start gap-2.5 sm:gap-3 ${isUser ? '' : 'flex-row-reverse'}`}>
+    <div className={`flex items-start gap-2.5 sm:gap-3 ${isUser ? '' : 'flex-row-reverse'}`}>
       <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
         isUser ? 'bg-brand-600 text-white' : 'bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300'
       }`}>
         {isUser ? <UserIcon className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
       </div>
 
-      {/* Wrapper: bubble + side reply arrow */}
-      <div className={`relative max-w-[85%] min-w-0 ${isUser ? 'flex flex-col items-end' : ''}`} style={{ overflow: 'visible' }}>
-        {/* Reply arrow — always visible on outer edge */}
-        {parsed.content && !isStreaming && (
-          <button
-            onClick={() => onReply(msg)}
-            title="پاسخ"
-            aria-label="پاسخ"
-            className={`absolute top-1 z-20 w-8 h-8 rounded-full flex items-center justify-center
-              bg-white dark:bg-slate-800
-              border border-slate-200 dark:border-slate-700
-              shadow-sm text-slate-400 dark:text-slate-500
-              hover:text-brand-600 dark:hover:text-brand-400
-              hover:border-brand-300 dark:hover:border-brand-700
-              active:scale-90 transition-all ${
-                isUser ? '-start-10' : '-end-10'
-              }`}
-          >
-            <ReplyArrow className="w-4 h-4" />
-          </button>
-        )}
-
+      <div className={`max-w-[85%] min-w-0 ${isUser ? 'flex flex-col items-end' : ''}`}>
         <div className={`rounded-2xl px-3.5 py-2.5 sm:px-4 sm:py-3 text-sm leading-relaxed break-words ${
           isUser
             ? 'bg-brand-600 text-white rounded-tr-md'
             : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-tl-md'
         }`}>
-          {/* Reply parent quote — inside the bubble at the top */}
           {replyParent && (
             <div className={`mb-2 px-2.5 py-1.5 rounded-lg text-[11px] leading-relaxed border-e-2 ${
               isUser
@@ -131,16 +88,15 @@ const MessageBubble = memo(function MessageBubble({
             <p className="whitespace-pre-wrap break-words">{msg.content}</p>
           ) : isStreaming ? (
             <div className="flex items-center gap-1 py-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-400 dark:bg-brand-500 animate-bounce" />
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-400 dark:bg-brand-500 animate-bounce [animation-delay:0.15s]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-400 dark:bg-brand-500 animate-bounce [animation-delay:0.3s]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-bounce" />
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-bounce [animation-delay:0.15s]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-bounce [animation-delay:0.3s]" />
             </div>
           ) : (
             <>
               <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 break-words">
                 <ReactMarkdown>{parsed.content}</ReactMarkdown>
               </div>
-
               {parsed.citations.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-slate-200/80 dark:border-slate-700/80 flex items-center flex-wrap gap-1.5">
                   <span className="text-[10px] font-black text-amber-700 dark:text-amber-400">منابع:</span>
@@ -159,12 +115,21 @@ const MessageBubble = memo(function MessageBubble({
           )}
         </div>
 
-        {/* Action row — below the bubble */}
+        {/* Action row — Reply, Copy, Comment, Regenerate */}
         {parsed.content && !isStreaming && (
           <div className={`mt-2 flex items-center flex-wrap gap-1.5 ${isUser ? 'justify-start flex-row-reverse' : ''}`}>
             <button
+              onClick={() => onReply(msg)}
+              title="پاسخ"
+              className="text-[11px] px-2.5 py-1 rounded-lg border bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:border-brand-300 font-bold flex items-center gap-1 transition"
+            >
+              <Reply className="w-3 h-3 -scale-x-100" />
+              <span>پاسخ</span>
+            </button>
+
+            <button
               onClick={handleCopy}
-              title={copied ? 'کپی شد' : 'کپی'}
+              title="کپی"
               className={`text-[11px] px-2.5 py-1 rounded-lg border flex items-center gap-1 font-bold transition ${
                 copied
                   ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-400'
@@ -249,12 +214,8 @@ export function ChatPanel({
       return [...prev, userMsg, { id: assistantId, role: 'assistant', content: '' }];
     });
 
-    // Register user in lookup so reply references resolve immediately
     if (capturedReply) {
-      setLookup((l) => ({
-        ...l,
-        [userMsg.id]: { role: 'user', content },
-      }));
+      setLookup((l) => ({ ...l, [userMsg.id]: { role: 'user', content } }));
     }
 
     try {
@@ -266,6 +227,8 @@ export function ChatPanel({
           chatId: chat.id,
           messages: payload.map((m) => ({ role: m.role, content: m.content })),
           replyToId: capturedReply?.id ?? null,
+          replyToContent: capturedReply?.content ?? null,
+          replyToRole: capturedReply?.role ?? null,
         }),
       });
       if (!res.ok || !res.body) throw new Error('Request failed');
@@ -303,18 +266,17 @@ export function ChatPanel({
   }, []);
 
   const handleAnalyze = useCallback((kind: 'analysis' | 'mindmap') => {
-    if (kind === 'mindmap') { setShowMindmap(true); return; }
-    setShowAnalysis(true);
+    if (kind === 'mindmap') setShowMindmap(true);
+    else setShowAnalysis(true);
   }, []);
 
   const chatColumn = (
     <div className="flex-1 flex flex-col overflow-hidden min-w-0">
       <ChatHeader chat={chat} />
+      <SummaryCard chatId={chat.id} summary={chat.summary} />
 
-      {chat.summary && <SummaryCard chatId={chat.id} summary={chat.summary} />}
-
-      <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-6">
-        <div className="max-w-3xl mx-auto space-y-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-6">
+        <div className="max-w-3xl mx-auto space-y-5">
           {messages.map((m) => (
             <MessageBubble
               key={m.id}
@@ -357,28 +319,15 @@ export function ChatPanel({
     <>
       <div className="xl:hidden flex-1 flex flex-col overflow-hidden min-h-0">
         <div className="shrink-0 grid grid-cols-2 gap-1 p-1 bg-slate-100 dark:bg-slate-950 mx-3 mt-3 rounded-2xl">
-          <button
-            onClick={() => setViewMode('chat')}
-            className={`flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition ${
-              viewMode === 'chat'
-                ? 'bg-white dark:bg-slate-800 text-brand-700 dark:text-brand-300 shadow-sm'
-                : 'text-slate-500 dark:text-slate-400'
-            }`}
-          >
+          <button onClick={() => setViewMode('chat')}
+            className={`flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition ${viewMode === 'chat' ? 'bg-white dark:bg-slate-800 text-brand-700 dark:text-brand-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
             <MessageSquare className="w-4 h-4" /> گفتگو
           </button>
-          <button
-            onClick={() => setViewMode('reader')}
-            className={`flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition ${
-              viewMode === 'reader'
-                ? 'bg-white dark:bg-slate-800 text-brand-700 dark:text-brand-300 shadow-sm'
-                : 'text-slate-500 dark:text-slate-400'
-            }`}
-          >
+          <button onClick={() => setViewMode('reader')}
+            className={`flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition ${viewMode === 'reader' ? 'bg-white dark:bg-slate-800 text-brand-700 dark:text-brand-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
             <BookOpen className="w-4 h-4" /> خواننده
           </button>
         </div>
-
         <div className="flex-1 flex overflow-hidden mt-3 min-h-0">
           {viewMode === 'chat' ? chatColumn : readerColumn}
         </div>
@@ -400,28 +349,15 @@ export function ChatPanel({
           onClose={() => setModal(null)}
         />
       )}
-
       {commentFor && (
-        <CommentSheet
-          messageId={commentFor}
-          onClose={() => setCommentFor(null)}
-          onCountChange={() => {}}
-        />
+        <CommentSheet messageId={commentFor} onClose={() => setCommentFor(null)} onCountChange={() => {}} />
       )}
-
       {showMindmap && (
         <MindMapModal chatId={chat.id} initial={chat.mindmap} onClose={() => setShowMindmap(false)} />
       )}
-
       {showAnalysis && (
-        <AnalysisModal
-          chatId={chat.id}
-          chatTitle={chat.fileName}
-          initial={chat.analysis}
-          onClose={() => setShowAnalysis(false)}
-        />
+        <AnalysisModal chatId={chat.id} chatTitle={chat.fileName} initial={chat.analysis} onClose={() => setShowAnalysis(false)} />
       )}
-
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
 
       <GlobalSettingsListener onOpen={() => setShowSettings(true)} />
