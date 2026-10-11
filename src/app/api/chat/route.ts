@@ -20,13 +20,15 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { chatId, messages, replyToId, replyToContent, replyToRole } = body;
+
     console.log('[chat] received', {
       chatId,
       messageCount: messages?.length,
-      replyToId: replyToId?.slice(0, 8),
-      replyToContentLen: replyToContent?.length ?? 0,
+      replyToId: replyToId ? replyToId.slice(0, 8) : null,
+      replyToContentLen: replyToContent ? replyToContent.length : 0,
       replyToRole,
     });
+
     if (!chatId) return NextResponse.json({ error: 'Missing chatId' }, { status: 400 });
 
     const { data: chat } = await supabase
@@ -41,6 +43,25 @@ export async function POST(req: NextRequest) {
       ? pageTexts.map((t, i) => `===[صفحه ${i + 1}]===\n${t}`).join('\n\n').slice(0, 80_000)
       : (chat.document_text || '').slice(0, 80_000);
 
+    const hasReply = !!(replyToContent && String(replyToContent).trim().length > 0);
+
+    // Build reply context block (plain string concat — no triple quotes)
+    let replyBlock = '';
+    if (hasReply) {
+      const parentText = String(replyToContent).slice(0, 1200);
+      const roleLabel = replyToRole === 'user' ? 'کاربر' : 'دستیار';
+      replyBlock =
+        '\n\n════════════════════════════════════════\n' +
+        'پیامی که کاربر به آن «پاسخ» داده است:\n' +
+        'نقش: ' + roleLabel + '\n' +
+        'متن پیام:\n' +
+        '«' + parentText + '»\n' +
+        '════════════════════════════════════════\n\n' +
+        '⚠️ بسیار مهم: کاربر با استفاده از قابلیت «پاسخ» روی این پیام پاسخ داده است. ' +
+        'اگر سوال کاربر شامل ضمایری مثل «این»، «آن»، «همین پیام»، «بالا» یا «قبلی» باشد، ' +
+        'به این پیام اشاره دارد. پاسخ خود را با در نظر گرفتن محتوای این پیام بده.';
+    }
+
     const systemPrompt =
       'شما یک دستیار مفید هستید که به سؤالات کاربر درباره محتوای یک سند PDF پاسخ می‌دهید.\n\n' +
       'خلاصه سند:\n' + (chat.summary || '') + '\n\n' +
@@ -50,24 +71,11 @@ export async function POST(req: NextRequest) {
       '- فقط بر اساس محتوای سند پاسخ دهید\n' +
       '- اگر پاسخ در سند نیست، بگویید: «این اطلاعات در سند یافت نشد»\n' +
       '- مختصر و دقیق باشید\n' +
-      '- در انتهای هر پاسخ: [منابع: ص۳ «متن»، ص۷ «متن»] با ارقام فارسی و نقل قول کلمه‌به‌کلمه';
+      '- در انتهای هر پاسخ: [منابع: ص۳ «متن»، ص۷ «متن»] با ارقام فارسی و نقل قول کلمه‌به‌کلمه' +
+      replyBlock;
 
     const lastMessage = messages[messages.length - 1];
 
-    // If user is replying to a specific message, prepend that context so the
-    // AI understands what the user is referring to.
-    let effectiveUserMessage = lastMessage.content;
-    if (replyToContent && replyToContent.trim().length > 0) {
-      const roleLabel = replyToRole === 'user' ? 'پیام قبلی کاربر' : 'پاسخ قبلی دستیار';
-      effectiveUserMessage =
-        `[${roleLabel} که کاربر به آن پاسخ می‌دهد]:\n` +
-        `"${replyToContent.slice(0, 800)}"\n\n` +
-        `[پاسخ/سوال جدید کاربر]:\n` +
-        lastMessage.content;
-      console.log('[chat] reply context included, parent length:', replyToContent.length);
-    }
-
-    // Insert user message with reply_to_id
     await supabase.from('messages').insert({
       chat_id: chatId,
       role: 'user',
@@ -75,14 +83,10 @@ export async function POST(req: NextRequest) {
       reply_to_id: replyToId || null,
     });
 
-    // ⭐ Pre-insert an empty assistant row so refresh mid-stream doesn't lose it
+    // Pre-insert assistant row so refresh mid-stream doesn't lose it
     const { data: assistantRow } = await supabase
       .from('messages')
-      .insert({
-        chat_id: chatId,
-        role: 'assistant',
-        content: '',
-      })
+      .insert({ chat_id: chatId, role: 'assistant', content: '' })
       .select('id')
       .single();
     const assistantMsgId = assistantRow?.id;
@@ -106,7 +110,6 @@ export async function POST(req: NextRequest) {
       stream = r.stream;
       usedProvider = r.provider;
     } catch (e: any) {
-      // Clean up the placeholder if we never streamed anything
       if (assistantMsgId) {
         await supabase.from('messages').update({ content: friendlyError(e?.message ?? '') }).eq('id', assistantMsgId);
       }
@@ -125,7 +128,6 @@ export async function POST(req: NextRequest) {
           }
           controller.close();
 
-          // Update the pre-inserted row with the final content
           if (assistantMsgId) {
             await supabase
               .from('messages')
@@ -134,7 +136,6 @@ export async function POST(req: NextRequest) {
           }
           await supabase.from('chats').update({ updated_at: new Date().toISOString() }).eq('id', chatId);
         } catch (error: any) {
-          // Save whatever we streamed so far, plus a friendly error
           const friendly = '\n\n' + friendlyError(error?.message ?? '');
           if (assistantMsgId) {
             await supabase

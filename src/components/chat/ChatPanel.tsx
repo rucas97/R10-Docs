@@ -72,15 +72,16 @@ const MessageBubble = memo(function MessageBubble({
             : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-tl-md'
         }`}>
           {replyParent && (
-            <div className={`mb-2 px-2.5 py-1.5 rounded-lg text-[11px] leading-relaxed border-e-2 ${
+            <div className={`mb-2.5 ps-2.5 pe-2 py-1.5 rounded-lg text-[11px] leading-relaxed border-s-4 ${
               isUser
-                ? 'bg-white/15 border-white/60 text-white/90'
-                : 'bg-brand-50/70 dark:bg-brand-950/40 border-brand-500 text-slate-600 dark:text-slate-300'
+                ? 'bg-black/15 border-white/70 text-white/95'
+                : 'bg-brand-50/80 dark:bg-brand-950/50 border-brand-500 text-slate-700 dark:text-slate-200'
             }`}>
-              <p className={`font-black mb-0.5 ${isUser ? 'text-white/80' : 'text-brand-700 dark:text-brand-300'}`}>
-                {replyParent.role === 'user' ? 'شما' : 'دستیار'}
-              </p>
-              <p className="line-clamp-2">{replyParent.content.slice(0, 140) || '—'}</p>
+              <div className={`flex items-center gap-1 mb-1 font-black ${isUser ? 'text-white' : 'text-brand-700 dark:text-brand-300'}`}>
+                <Reply className="w-3 h-3 -scale-x-100" />
+                <span>{replyParent.role === 'user' ? 'پاسخ به پیام شما' : 'پاسخ به دستیار'}</span>
+              </div>
+              <p className="line-clamp-3 opacity-90">{replyParent.content.slice(0, 200) || '—'}</p>
             </div>
           )}
 
@@ -185,6 +186,7 @@ export function ChatPanel({
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [replyTarget, setReplyTarget] = useState<{ id: string; content: string; role: 'user' | 'assistant' } | null>(null);
+  const accRef = useRef('');
 
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -214,9 +216,18 @@ export function ChatPanel({
       return [...prev, userMsg, { id: assistantId, role: 'assistant', content: '' }];
     });
 
-    if (capturedReply) {
-      setLookup((l) => ({ ...l, [userMsg.id]: { role: 'user', content } }));
-    }
+    // Ensure BOTH the current user message AND its parent are in lookup
+    // immediately, so the quoted parent renders on the very first paint.
+    setLookup((l) => {
+      const next = { ...l };
+      // Add the parent if it's missing (happens for AI greeting or fresh load)
+      if (capturedReply && !next[capturedReply.id]) {
+        next[capturedReply.id] = { role: capturedReply.role, content: capturedReply.content };
+      }
+      // Add the new user message so future replies can reference it
+      next[userMsg.id] = { role: 'user', content };
+      return next;
+    });
 
     try {
       await new Promise((r) => setTimeout(r, 0));
@@ -240,6 +251,7 @@ export function ChatPanel({
         const { done, value } = await reader.read();
         if (done) break;
         acc += decoder.decode(value, { stream: true });
+        accRef.current = acc;
         setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, content: acc } : x)));
       }
     } catch {
