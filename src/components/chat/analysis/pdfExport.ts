@@ -1,7 +1,7 @@
 'use client';
 
 export async function exportElementToPdf(el: HTMLElement, filename: string) {
-  const html2canvas = (await import('html2canvas')).default;
+  const html2canvas = (await import('html2canvas-pro')).default;
   const { jsPDF } = await import('jspdf');
 
   // Wait for fonts

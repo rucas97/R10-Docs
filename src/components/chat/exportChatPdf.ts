@@ -10,7 +10,7 @@ function escapeHtml(s: string): string {
 }
 
 export async function exportChatToPdf(fileName: string, messages: Msg[]) {
-  const html2canvas = (await import('html2canvas')).default;
+  const html2canvas = (await import('html2canvas-pro')).default;
   const { jsPDF } = await import('jspdf');
 
   // Create container IN the viewport but hidden — html2canvas needs visible layout

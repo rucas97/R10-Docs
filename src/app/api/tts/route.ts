@@ -2,22 +2,87 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
-export const maxDuration = 30;
+export const maxDuration = 60;
 
-const DEFAULT_VOICE = 'fa-IR-DilaraNeural';
+// Google Translate TTS endpoint — free, no key, supports Persian.
+// Hard limit: ~200 chars per request. We chunk at 180 to be safe.
+const GTTS = 'https://translate.google.com/translate_tts';
+const CHUNK_SIZE = 180;
+const MAX_TEXT = 3000;
+
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
+
+function chunkText(text: string): string[] {
+  // Prefer breaking at sentence boundaries (Persian: ., !, ?, ؟, ؛, ،)
+  const chunks: string[] = [];
+  const sentences = text.split(/(?<=[.!?؟۔])\s+/);
+  let current = '';
+
+  const pushCurrent = () => {
+    if (current.trim()) chunks.push(current.trim());
+    current = '';
+  };
+
+  for (const sentence of sentences) {
+    if (sentence.length > CHUNK_SIZE) {
+      // Long sentence: split by word
+      pushCurrent();
+      const words = sentence.split(/\s+/);
+      for (const w of words) {
+        if ((current + ' ' + w).trim().length > CHUNK_SIZE) pushCurrent();
+        current = (current ? current + ' ' : '') + w;
+      }
+    } else if ((current + ' ' + sentence).trim().length > CHUNK_SIZE) {
+      pushCurrent();
+      current = sentence;
+    } else {
+      current = (current ? current + ' ' : '') + sentence;
+    }
+  }
+  pushCurrent();
+
+  return chunks.filter(Boolean);
+}
+
+async function fetchChunk(chunk: string): Promise<Buffer | null> {
+  const params = new URLSearchParams({
+    ie: 'UTF-8',
+    q: chunk,
+    tl: 'fa',
+    client: 'tw-ob',
+    ttsspeed: '0.95',
+  });
+
+  const url = `${GTTS}?${params.toString()}`;
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': UA,
+        'Referer': 'https://translate.google.com/',
+      },
+    });
+
+    if (!res.ok) {
+      console.warn('[tts] google chunk failed:', res.status);
+      return null;
+    }
+
+    const ab = await res.arrayBuffer();
+    return Buffer.from(ab);
+  } catch (e: any) {
+    console.warn('[tts] fetch error:', e?.message);
+    return null;
+  }
+}
 
 export async function POST(req: NextRequest) {
-  const log: string[] = [];
   try {
-    log.push('start');
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    log.push('auth ok');
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { text, voice } = await req.json();
+    const { text } = await req.json();
     if (!text || typeof text !== 'string') {
       return NextResponse.json({ error: 'Missing text' }, { status: 400 });
     }
@@ -25,67 +90,43 @@ export async function POST(req: NextRequest) {
     const cleaned = text
       .replace(/\[منابع:[^\]]+\]/g, '')
       .replace(/[*_`#>]/g, '')
+      .replace(/[\u200C\u200D\u200E\u200F]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
-      .slice(0, 2000);
+      .slice(0, MAX_TEXT);
 
     if (!cleaned) {
       return NextResponse.json({ error: 'Empty text' }, { status: 400 });
     }
-    log.push(`cleaned ${cleaned.length} chars`);
 
-    // Dynamic import
-    const mod: any = await import('msedge-tts');
-    log.push('imported msedge-tts');
-    const { MsEdgeTTS, OUTPUT_FORMAT } = mod;
+    const chunks = chunkText(cleaned);
+    console.log(`[tts] ${cleaned.length} chars → ${chunks.length} chunks`);
 
-    const tts = new MsEdgeTTS();
-    log.push('created instance');
-    await tts.setMetadata(voice || DEFAULT_VOICE, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
-    log.push('metadata set');
-
-    const { audioStream } = tts.toStream(cleaned);
-    log.push('stream requested');
-
-    const chunks: Buffer[] = [];
-    const collected = await new Promise<{ ok: boolean; err?: string }>((resolve) => {
-      const timeout = setTimeout(() => resolve({ ok: false, err: 'timeout after 20s' }), 20_000);
-      audioStream.on('data', (chunk: any) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
-      audioStream.on('end', () => { clearTimeout(timeout); resolve({ ok: true }); });
-      audioStream.on('close', () => { clearTimeout(timeout); resolve({ ok: true }); });
-      audioStream.on('error', (err: any) => { clearTimeout(timeout); resolve({ ok: false, err: err?.message || 'stream error' }); });
-    });
-
-    if (!collected.ok) {
-      console.error('[tts] stream failed:', collected.err, '| log:', log.join(' → '));
-      return NextResponse.json(
-        { error: 'Stream failed: ' + (collected.err || 'unknown'), steps: log },
-        { status: 500 }
-      );
+    // Sequential to avoid Google rate-limiting. Each chunk ~0.3-0.8s.
+    const buffers: Buffer[] = [];
+    for (let i = 0; i < chunks.length; i++) {
+      const buf = await fetchChunk(chunks[i]);
+      if (buf) buffers.push(buf);
+      else console.warn(`[tts] chunk ${i} failed`);
     }
 
-    if (chunks.length === 0) {
-      console.error('[tts] no audio | log:', log.join(' → '));
-      return NextResponse.json({ error: 'No audio chunks', steps: log }, { status: 500 });
+    if (buffers.length === 0) {
+      return NextResponse.json({ error: 'Google TTS failed for all chunks' }, { status: 502 });
     }
 
-    const buffer = Buffer.concat(chunks);
-    log.push(`audio ${buffer.length} bytes`);
-    console.log('[tts] ✅', log.join(' → '));
+    const audio = Buffer.concat(buffers);
+    console.log(`[tts] ✅ ${buffers.length}/${chunks.length} chunks, ${audio.length} bytes`);
 
-    return new NextResponse(buffer, {
+    return new NextResponse(audio, {
       status: 200,
       headers: {
         'Content-Type': 'audio/mpeg',
-        'Content-Length': String(buffer.length),
+        'Content-Length': String(audio.length),
         'Cache-Control': 'private, max-age=3600',
       },
     });
   } catch (e: any) {
-    console.error('[tts] error:', e?.message, '| steps:', log.join(' → '));
-    return NextResponse.json(
-      { error: e?.message || 'unknown', steps: log, stack: e?.stack?.slice(0, 300) },
-      { status: 500 }
-    );
+    console.error('[tts] error:', e?.message);
+    return NextResponse.json({ error: e?.message || 'TTS failed' }, { status: 500 });
   }
 }

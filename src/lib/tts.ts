@@ -16,16 +16,19 @@ export async function speak(text: string, onEnd?: () => void): Promise<boolean> 
       try {
         const data = await res.json();
         detail = data.error || '';
-        console.error('[tts] server error:', res.status, data);
-      } catch {
-        console.error('[tts] server error:', res.status);
-      }
-      alert('پخش صدا ناموفق بود: ' + (detail || res.status));
+      } catch {}
+      console.error('[tts] server error:', res.status, detail);
       onEnd?.();
       return false;
     }
 
     const blob = await res.blob();
+    if (blob.size === 0) {
+      console.error('[tts] empty audio');
+      onEnd?.();
+      return false;
+    }
+
     const url = URL.createObjectURL(blob);
     currentUrl = url;
 
@@ -40,14 +43,19 @@ export async function speak(text: string, onEnd?: () => void): Promise<boolean> 
       }
       onEnd?.();
     };
-    audio.onerror = (e) => {
-      console.error('[tts] playback error:', e);
+    audio.onerror = () => {
+      console.error('[tts] playback error');
+      if (currentUrl === url) {
+        URL.revokeObjectURL(url);
+        currentUrl = null;
+        currentAudio = null;
+      }
       onEnd?.();
     };
 
     await audio.play();
     return true;
-  } catch (e) {
+  } catch (e: any) {
     console.error('[tts] error:', e);
     onEnd?.();
     return false;
