@@ -18,7 +18,15 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { chatId, messages, replyToId, replyToContent, replyToRole } = await req.json();
+    const body = await req.json();
+    const { chatId, messages, replyToId, replyToContent, replyToRole } = body;
+    console.log('[chat] received', {
+      chatId,
+      messageCount: messages?.length,
+      replyToId: replyToId?.slice(0, 8),
+      replyToContentLen: replyToContent?.length ?? 0,
+      replyToRole,
+    });
     if (!chatId) return NextResponse.json({ error: 'Missing chatId' }, { status: 400 });
 
     const { data: chat } = await supabase
