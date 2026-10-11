@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { AnalysisChart } from './AnalysisCharts';
 import { exportElementToPdf } from './pdfExport';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export function AnalysisModal({
   chatId,
@@ -95,6 +96,7 @@ export function AnalysisModal({
             <p className="text-sm font-black text-slate-800 dark:text-slate-100">تحلیل سند</p>
           </div>
           <div className="flex items-center gap-1">
+            <ThemeToggle />
             <button
               onClick={() => load(true)}
               disabled={loading}

@@ -3,11 +3,12 @@
 import { useState, useRef, useEffect, useMemo, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Bot, User as UserIcon, Sparkles, X,
-  MessageSquare, BookOpen, Copy, Check, RefreshCw, MessageCircle, Reply,
+  Bot, User as UserIcon, X, MessageSquare, BookOpen,
+  Copy, Check, RefreshCw, MessageCircle, Reply, Volume2, Square,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { extractCitations, toPersianNumber, type Citation } from '@/lib/citations';
+import { speak, stopSpeaking, ttsSupported } from '@/lib/tts';
 import { SourceModal } from './SourceModal';
 import { PdfViewer } from './PdfViewer';
 import { ChatInput } from './ChatInput';
@@ -40,9 +41,10 @@ const MessageBubble = memo(function MessageBubble({
 }) {
   const isUser = msg.role === 'user';
   const [copied, setCopied] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
 
   const parsed = useMemo(
-    () => (isUser ? { content: msg.content, pages: [] as number[], citations: [] as Citation[] } : extractCitations(msg.content)),
+    () => (isUser ? { content: msg.content, citations: [] as Citation[] } : extractCitations(msg.content)),
     [msg.content, isUser]
   );
 
@@ -57,6 +59,16 @@ const MessageBubble = memo(function MessageBubble({
     } catch {}
   };
 
+  const handleSpeak = () => {
+    if (speaking) {
+      stopSpeaking();
+      setSpeaking(false);
+      return;
+    }
+    const ok = speak(parsed.content, () => setSpeaking(false));
+    if (ok) setSpeaking(true);
+  };
+
   return (
     <div className={`flex items-start gap-2.5 sm:gap-3 ${isUser ? '' : 'flex-row-reverse'}`}>
       <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
@@ -65,7 +77,18 @@ const MessageBubble = memo(function MessageBubble({
         {isUser ? <UserIcon className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
       </div>
 
-      <div className={`max-w-[85%] min-w-0 ${isUser ? 'flex flex-col items-end' : ''}`}>
+      <div className={`max-w-[85%] min-w-0 relative ${isUser ? 'flex flex-col items-end' : ''}`}>
+        {/* Regenerate icon — floating corner of AI bubble */}
+        {!isUser && parsed.content && !isStreaming && (
+          <button
+            onClick={() => onRegenerate(msg)}
+            title="بازتولید"
+            className="absolute -top-2 -start-2 z-10 w-7 h-7 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-brand-600 dark:hover:text-brand-400 hover:border-brand-300 transition active:scale-90"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+        )}
+
         <div className={`rounded-2xl px-3.5 py-2.5 sm:px-4 sm:py-3 text-sm leading-relaxed break-words ${
           isUser
             ? 'bg-brand-600 text-white rounded-tr-md'
@@ -116,9 +139,23 @@ const MessageBubble = memo(function MessageBubble({
           )}
         </div>
 
-        {/* Action row — Reply, Copy, Comment, Regenerate */}
         {parsed.content && !isStreaming && (
           <div className={`mt-2 flex items-center flex-wrap gap-1.5 ${isUser ? 'justify-start flex-row-reverse' : ''}`}>
+            {ttsSupported() && (
+              <button
+                onClick={handleSpeak}
+                title={speaking ? 'توقف خواندن' : 'خواندن با صدای بلند'}
+                className={`text-[11px] px-2.5 py-1 rounded-lg border flex items-center gap-1 font-bold transition ${
+                  speaking
+                    ? 'bg-brand-50 dark:bg-brand-950/40 border-brand-300 dark:border-brand-800 text-brand-700 dark:text-brand-300'
+                    : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400'
+                }`}
+              >
+                {speaking ? <Square className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                <span>{speaking ? 'توقف' : 'خواندن'}</span>
+              </button>
+            )}
+
             <button
               onClick={() => onReply(msg)}
               title="پاسخ"
@@ -142,22 +179,13 @@ const MessageBubble = memo(function MessageBubble({
             </button>
 
             {!isUser && (
-              <>
-                <button
-                  onClick={() => onComment(msg)}
-                  className="text-[11px] px-2.5 py-1 rounded-lg border bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 font-bold flex items-center gap-1 transition"
-                >
-                  <MessageCircle className="w-3 h-3" />
-                  <span>یادداشت</span>
-                </button>
-                <button
-                  onClick={() => onRegenerate(msg)}
-                  className="text-[11px] px-2.5 py-1 rounded-lg border bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 font-bold flex items-center gap-1 transition"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  <span>بازتولید</span>
-                </button>
-              </>
+              <button
+                onClick={() => onComment(msg)}
+                className="text-[11px] px-2.5 py-1 rounded-lg border bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 font-bold flex items-center gap-1 transition"
+              >
+                <MessageCircle className="w-3 h-3" />
+                <span>یادداشت</span>
+              </button>
             )}
           </div>
         )}
@@ -186,9 +214,9 @@ export function ChatPanel({
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [replyTarget, setReplyTarget] = useState<{ id: string; content: string; role: 'user' | 'assistant' } | null>(null);
-  const accRef = useRef('');
 
   const endRef = useRef<HTMLDivElement>(null);
+  const accRef = useRef('');
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -200,6 +228,7 @@ export function ChatPanel({
 
     setStreaming(true);
     setViewMode('chat');
+    accRef.current = '';
 
     const userMsg: Msg = {
       id: `local-${Date.now()}`,
@@ -216,15 +245,11 @@ export function ChatPanel({
       return [...prev, userMsg, { id: assistantId, role: 'assistant', content: '' }];
     });
 
-    // Ensure BOTH the current user message AND its parent are in lookup
-    // immediately, so the quoted parent renders on the very first paint.
     setLookup((l) => {
       const next = { ...l };
-      // Add the parent if it's missing (happens for AI greeting or fresh load)
       if (capturedReply && !next[capturedReply.id]) {
         next[capturedReply.id] = { role: capturedReply.role, content: capturedReply.content };
       }
-      // Add the new user message so future replies can reference it
       next[userMsg.id] = { role: 'user', content };
       return next;
     });
@@ -257,6 +282,7 @@ export function ChatPanel({
     } catch {
       setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, content: 'متأسفانه خطایی رخ داد.' } : x));
     } finally {
+      setLookup((l) => ({ ...l, [assistantId]: { role: 'assistant', content: accRef.current } }));
       setStreaming(false);
       setReplyTarget(null);
       router.refresh();
@@ -284,7 +310,7 @@ export function ChatPanel({
 
   const chatColumn = (
     <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-      <ChatHeader chat={chat} />
+      <ChatHeader chat={chat} messages={messages} />
       <SummaryCard chatId={chat.id} summary={chat.summary} />
 
       <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-6">
