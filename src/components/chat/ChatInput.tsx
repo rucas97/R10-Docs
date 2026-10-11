@@ -33,7 +33,9 @@ export function ChatInput({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [listening, setListening] = useState(false);
+  const [micStream, setMicStream] = useState<MediaStream | null>(null);
   const recognitionRef = useRef<any>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const items = (suggestions && suggestions.length > 0) ? suggestions : FALLBACK;
@@ -45,29 +47,74 @@ export function ChatInput({
     }
   }, [input]);
 
-  const startListening = () => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) {
-      alert('مرورگر شما از تبدیل گفتار به متن پشتیبانی نمی‌کند.');
+  const startListening = async () => {
+    // 1) Get the audio stream FIRST so the analyser can drive the wave.
+    //    Chrome allows SpeechRecognition to share the mic AFTER a getUserMedia
+    //    stream is already active on the page. Doing it in this order avoids
+    //    the "aborted" error that kills transcription.
+    let stream: MediaStream | null = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      setMicStream(stream);
+    } catch (e) {
+      console.warn('[mic] getUserMedia failed:', e);
+      alert('دسترسی به میکروفون داده نشد.');
       return;
     }
+
+    // 2) Start SpeechRecognition
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      alert('مرورگر شما از تبدیل گفتار به متن پشتیبانی نمی‌کند. از Chrome استفاده کنید.');
+      stream.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+      setMicStream(null);
+      return;
+    }
+
     const rec = new SR();
     rec.lang = 'fa-IR';
-    rec.continuous = false;
+    rec.continuous = true;
     rec.interimResults = true;
+
+    let finalText = '';
     rec.onresult = (e: any) => {
-      let t = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
-      setInput(t);
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const tr = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalText += tr + ' ';
+        else interim += tr;
+      }
+      setInput((finalText + interim).trim());
     };
-    rec.onend = () => setListening(false);
-    rec.onerror = () => setListening(false);
-    rec.start();
+    rec.onerror = (e: any) => {
+      console.warn('[mic] recognition error:', e?.error);
+    };
+    rec.onend = () => {
+      // Chrome stops after a pause — restart if user hasn't tapped stop
+      if (recognitionRef.current && streamRef.current) {
+        try { rec.start(); } catch {}
+      }
+    };
+
+    try {
+      rec.start();
+    } catch (e) {
+      console.warn('[mic] rec.start failed:', e);
+    }
     recognitionRef.current = rec;
     setListening(true);
   };
 
-  const stopListening = () => { recognitionRef.current?.stop(); setListening(false); };
+  const stopListening = () => {
+    try { recognitionRef.current?.stop(); } catch {}
+    recognitionRef.current = null;
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setMicStream(null);
+    setListening(false);
+  };
 
   const submit = () => {
     const content = input.trim();
@@ -173,7 +220,7 @@ export function ChatInput({
 
         <div className="relative rounded-3xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 transition p-2 overflow-hidden">
           {/* Mic wave overlay */}
-          <MicWave active={listening} />
+          <MicWave active={listening} stream={micStream} />
 
           <textarea
             ref={textareaRef}

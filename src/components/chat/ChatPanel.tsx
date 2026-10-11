@@ -15,6 +15,7 @@ import { ChatHeader } from './ChatHeader';
 import { CommentSheet } from './CommentSheet';
 import { SummaryCard } from './SummaryCard';
 import { MindMapModal } from './MindMapModal';
+import { AnalysisModal } from './analysis/AnalysisModal';
 import { SettingsModal } from './settings/SettingsModal';
 
 type Msg = {
@@ -23,7 +24,7 @@ type Msg = {
   content: string;
   replyToId?: string | null;
 };
-type ChatMeta = { id: string; title: string; fileName: string; pageCount: number; summary: string; primaryLanguage: 'fa' | 'en'; suggestedQuestions: string[]; mindmap: any };
+type ChatMeta = { id: string; title: string; fileName: string; pageCount: number; summary: string; primaryLanguage: 'fa' | 'en'; suggestedQuestions: string[]; mindmap: any; analysis: any };
 type OpenSourceFn = (citations: Citation[], index: number) => void;
 type Lookup = Record<string, { role: 'user' | 'assistant'; content: string }>;
 
@@ -214,6 +215,7 @@ export function ChatPanel({
   const [modal, setModal] = useState<{ citations: Citation[]; index: number } | null>(null);
   const [commentFor, setCommentFor] = useState<string | null>(null);
   const [showMindmap, setShowMindmap] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [replyTarget, setReplyTarget] = useState<{ id: string; content: string; role: 'user' | 'assistant' } | null>(null);
 
@@ -300,7 +302,7 @@ export function ChatPanel({
 
   const handleAnalyze = useCallback((kind: 'analysis' | 'mindmap') => {
     if (kind === 'mindmap') { setShowMindmap(true); return; }
-    alert('تحلیل سند به‌زودی اضافه می‌شود.');
+    setShowAnalysis(true);
   }, []);
 
   const chatColumn = (
@@ -407,6 +409,15 @@ export function ChatPanel({
 
       {showMindmap && (
         <MindMapModal chatId={chat.id} initial={chat.mindmap} onClose={() => setShowMindmap(false)} />
+      )}
+
+      {showAnalysis && (
+        <AnalysisModal
+          chatId={chat.id}
+          chatTitle={chat.fileName}
+          initial={chat.analysis}
+          onClose={() => setShowAnalysis(false)}
+        />
       )}
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
