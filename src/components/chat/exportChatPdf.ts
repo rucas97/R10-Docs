@@ -123,7 +123,16 @@ export async function exportChatToPdf(fileName: string, messages: Msg[]) {
       pageNum++;
     }
 
-    pdf.save(`chat-${fileName.replace(/\.pdf$/i, '')}.pdf`);
+    // Use blob URL + manual click — more reliable than pdf.save() in some browsers
+    const blob = pdf.output('blob');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chat-${fileName.replace(/\.pdf$/i, '')}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
   } finally {
     document.body.removeChild(container);
   }

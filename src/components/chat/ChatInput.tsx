@@ -6,7 +6,7 @@ import {
   Send, Lightbulb, Loader2, Mic, Plus, TrendingUp, BarChart3, X,
 } from 'lucide-react';
 import { usePrefs } from '@/lib/preferences';
-import { MicWave } from './MicWave';
+import { MicCircle } from './MicCircle';
 
 const FALLBACK = [
   'این سند را در سه نکته کلیدی خلاصه کن.',
@@ -35,7 +35,6 @@ export function ChatInput({
   const [showMenu, setShowMenu] = useState(false);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
   const [listening, setListening] = useState(false);
-  const [micStream, setMicStream] = useState<MediaStream | null>(null);
   const [micError, setMicError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -160,16 +159,16 @@ export function ChatInput({
     if (!isAndroid) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        streamRef.current = stream;
-        setMicStream(stream);
+    
+    
         console.log('[mic] audio stream attached for wave');
       } catch (e) {
         console.warn('[mic] getUserMedia failed, using CSS wave');
-        setMicStream(null);
+    
       }
     } else {
       console.log('[mic] Android detected — skipping getUserMedia, using CSS wave');
-      setMicStream(null);
+  
     }
   };
 
@@ -179,7 +178,7 @@ export function ChatInput({
     recognitionRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
-    setMicStream(null);
+
     setListening(false);
     finalTextRef.current = '';
   };
@@ -336,7 +335,7 @@ export function ChatInput({
         )}
 
         <div className="relative rounded-3xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 transition p-2 overflow-hidden">
-          <MicWave active={listening} stream={micStream} />
+          <MicCircle active={listening} />
 
           <textarea
             ref={textareaRef}

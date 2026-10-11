@@ -29,7 +29,7 @@ export function ChatHeader({
     const b = btnRef.current;
     if (!b) return;
     const r = b.getBoundingClientRect();
-    setMenuPos({ x: r.right, y: r.bottom + 4 });
+    setMenuPos({ x: r.right, y: Math.min(r.bottom + 4, window.innerHeight - 220) });
     setOpen(true);
   };
 
@@ -75,8 +75,8 @@ export function ChatHeader({
       <div
         className="fixed w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden"
         style={{
-          top: menuPos.y,
-          right: Math.max(8, window.innerWidth - menuPos.x),
+          top: Math.max(8, menuPos.y),
+          right: Math.max(8, Math.min(window.innerWidth - menuPos.x, window.innerWidth - 240)),
           zIndex: 9999,
         }}
         dir="rtl"

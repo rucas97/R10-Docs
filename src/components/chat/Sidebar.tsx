@@ -138,7 +138,7 @@ export function Sidebar({
     e.preventDefault();
     e.stopPropagation();
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setMovePos({ x: r.right, y: r.top });
+    setMovePos({ x: Math.min(r.right, window.innerWidth - 20), y: Math.min(r.top, window.innerHeight - 240) });
     setMovingChatId(chatId);
   };
 
@@ -153,7 +153,7 @@ export function Sidebar({
         <Link
           href={`/chat/${c.id}`}
           onClick={onClose}
-          className={`flex items-center gap-2 px-2.5 py-2.5 rounded-xl transition pl-[72px] ${
+          className={`flex items-center gap-2 px-2.5 py-2.5 rounded-xl transition pl-[92px] ${
             active
               ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300'
               : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -208,8 +208,8 @@ export function Sidebar({
       <div
         className="fixed w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden"
         style={{
-          top: Math.min(movePos.y, window.innerHeight - 220),
-          left: Math.max(8, movePos.x - 210),
+          top: Math.max(8, Math.min(movePos.y, window.innerHeight - 260)),
+          right: Math.max(8, window.innerWidth - movePos.x),
           zIndex: 9999,
         }}
         dir="rtl"

@@ -54,5 +54,13 @@ export async function exportElementToPdf(el: HTMLElement, filename: string) {
     pageNum++;
   }
 
-  pdf.save(filename.endsWith('.pdf') ? filename : `${filename}.pdf`);
+  const blob = pdf.output('blob');
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
