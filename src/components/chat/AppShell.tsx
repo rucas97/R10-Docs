@@ -12,13 +12,16 @@ type Chat = {
   updated_at: string;
   is_pinned: boolean | null;
   pinned_at: string | null;
+  folder_id: string | null;
 };
+type FolderT = { id: string; name: string; created_at: string };
 
 export function AppShell({
-  user, chats, children,
+  user, chats, folders, children,
 }: {
   user: { email: string; id: string };
   chats: Chat[];
+  folders: FolderT[];
   children: React.ReactNode;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -34,7 +37,7 @@ export function AppShell({
           ${drawerOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
         `}
       >
-        <Sidebar user={user} chats={chats} onClose={() => setDrawerOpen(false)} />
+        <Sidebar user={user} chats={chats} folders={folders} onClose={() => setDrawerOpen(false)} />
       </aside>
 
       {drawerOpen && (

@@ -59,13 +59,13 @@ const MessageBubble = memo(function MessageBubble({
     } catch {}
   };
 
-  const handleSpeak = () => {
+  const handleSpeak = async () => {
     if (speaking) {
       stopSpeaking();
       setSpeaking(false);
       return;
     }
-    const ok = speak(parsed.content, () => setSpeaking(false));
+    const ok = await speak(parsed.content, () => setSpeaking(false));
     if (ok) setSpeaking(true);
   };
 
