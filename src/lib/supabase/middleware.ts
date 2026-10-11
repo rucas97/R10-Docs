@@ -4,50 +4,53 @@ import { NextResponse, type NextRequest } from 'next/server';
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        flowType: 'pkce',
-        detectSessionInUrl: false,
-        persistSession: false,
-      },
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
+  // If env vars are missing, skip auth entirely (build-time safety)
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    return supabaseResponse;
+  }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) =>
+          request.cookies.set(name, value)
+        );
+        supabaseResponse = NextResponse.next({ request });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          supabaseResponse.cookies.set(name, value, options)
+        );
+      },
+    },
+  });
+
+  // Never let an auth failure crash the whole request
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch (e) {
+    console.warn('[proxy] auth check failed:', e);
+  }
 
   const path = request.nextUrl.pathname;
 
   if (!user && (path === '/chat' || path.startsWith('/chat/'))) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    url.searchParams.set('next', path);
-    return NextResponse.redirect(url);
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = '/login';
+    redirectUrl.searchParams.set('next', path);
+    return NextResponse.redirect(redirectUrl);
   }
 
   if (user && path === '/login') {
-    const url = request.nextUrl.clone();
-    url.pathname = '/chat';
-    url.search = '';
-    return NextResponse.redirect(url);
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = '/chat';
+    redirectUrl.search = '';
+    return NextResponse.redirect(redirectUrl);
   }
 
   return supabaseResponse;

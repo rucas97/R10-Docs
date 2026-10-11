@@ -14,7 +14,13 @@ const PALETTE = [
 const CHART_STYLE = {
   fontFamily: 'Vazirmatn, system-ui, sans-serif',
   fontSize: 12,
-};
+} as const;
+
+const TICK_STYLE = {
+  fontFamily: 'Vazirmatn, system-ui, sans-serif',
+  fontSize: 12,
+  fill: '#64748b',
+} as const;
 
 export function AnalysisChart({ chart }: { chart: any }) {
   const data = chart.data || [];
@@ -44,7 +50,7 @@ export function AnalysisChart({ chart }: { chart: any }) {
                 ))}
               </Pie>
               <Tooltip contentStyle={CHART_STYLE} />
-              <Legend contentStyle={CHART_STYLE} wrapperStyle={{ direction: 'rtl' }} />
+              <Legend wrapperStyle={{ direction: 'rtl', fontFamily: 'Vazirmatn, system-ui, sans-serif', fontSize: 12 }} />
             </PieChart>
           ) : chart.type === 'bar' ? (
             <BarChart data={data}>
