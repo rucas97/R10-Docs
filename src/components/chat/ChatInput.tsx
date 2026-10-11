@@ -154,13 +154,21 @@ export function ChatInput({
       return;
     }
 
-    // Try to get the audio stream for wave visualization
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      setMicStream(stream);
-    } catch (e) {
-      console.warn('[mic] getUserMedia failed, no wave');
+    // Desktop only: try to get audio stream for the reactive wave.
+    // On Android, getUserMedia locks the mic and SpeechRecognition stops
+    // receiving audio. So we skip it there and use CSS animation instead.
+    if (!isAndroid) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        streamRef.current = stream;
+        setMicStream(stream);
+        console.log('[mic] audio stream attached for wave');
+      } catch (e) {
+        console.warn('[mic] getUserMedia failed, using CSS wave');
+        setMicStream(null);
+      }
+    } else {
+      console.log('[mic] Android detected — skipping getUserMedia, using CSS wave');
       setMicStream(null);
     }
   };

@@ -1,23 +1,44 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+// Two modes:
+//   1. Real audio-reactive wave (desktop, when stream is provided)
+//   2. CSS-animated fallback (Android or when getUserMedia is unavailable)
+//
+// We never call getUserMedia inside this component — the parent decides.
 
 export function MicWave({ active, stream }: { active: boolean; stream: MediaStream | null }) {
+  if (!active) return null;
+
+  // CSS-animated fallback
+  if (!stream || stream.getAudioTracks().length === 0) {
+    const bars = Array.from({ length: 24 });
+    return (
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-[3px] px-6" aria-hidden>
+        {bars.map((_, i) => (
+          <span
+            key={i}
+            className="mic-wave-bar w-[3px] rounded-full bg-gradient-to-t from-brand-400/50 via-brand-500 to-brand-600 dark:from-brand-600/50 dark:via-brand-400 dark:to-brand-300"
+            style={{ animationDelay: `${(bars.length - i) * 0.05}s` }}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  // Real audio-reactive wave
+  return <ReactiveWave stream={stream} />;
+}
+
+// ---- Real audio-reactive wave (unchanged) ----
+import { useEffect, useRef } from 'react';
+
+function ReactiveWave({ stream }: { stream: MediaStream }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number>(0);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const phaseRef = useRef(0);
 
   useEffect(() => {
-    if (!active) {
-      cancelAnimationFrame(rafRef.current);
-      audioCtxRef.current?.close().catch(() => {});
-      audioCtxRef.current = null;
-      analyserRef.current = null;
-      return;
-    }
-
     let cancelled = false;
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -35,30 +56,25 @@ export function MicWave({ active, stream }: { active: boolean; stream: MediaStre
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
 
-    const BAR_COUNT = 32;
-    const history: number[] = new Array(BAR_COUNT).fill(0);
-
-    // If we have a real stream, wire the analyser.
-    if (stream && stream.getAudioTracks().length > 0) {
-      (async () => {
-        try {
-          const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
-          const ctx = new Ctx();
-          audioCtxRef.current = ctx;
-          const src = ctx.createMediaStreamSource(stream);
-          const analyser = ctx.createAnalyser();
-          analyser.fftSize = 256;
-          analyser.smoothingTimeConstant = 0.75;
-          src.connect(analyser);
-          analyserRef.current = analyser;
-          console.log('[mic-wave] analyser attached');
-        } catch (e) {
-          console.warn('[mic-wave] analyser failed, using CSS fallback:', e);
-        }
-      })();
-    }
+    (async () => {
+      try {
+        const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+        const ctx = new Ctx();
+        audioCtxRef.current = ctx;
+        const src = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.75;
+        src.connect(analyser);
+        analyserRef.current = analyser;
+      } catch (e) {
+        console.warn('[mic-wave] analyser failed:', e);
+      }
+    })();
 
     const timeDomain = new Uint8Array(256);
+    const BAR_COUNT = 32;
+    const history: number[] = new Array(BAR_COUNT).fill(0);
 
     const render = () => {
       if (cancelled) return;
@@ -67,7 +83,6 @@ export function MicWave({ active, stream }: { active: boolean; stream: MediaStre
       draw.clearRect(0, 0, w, h);
 
       let level = 0;
-
       if (analyserRef.current) {
         analyserRef.current.getByteTimeDomainData(timeDomain);
         let sumSq = 0;
@@ -75,12 +90,7 @@ export function MicWave({ active, stream }: { active: boolean; stream: MediaStre
           const v = (timeDomain[i] - 128) / 128;
           sumSq += v * v;
         }
-        const rms = Math.sqrt(sumSq / timeDomain.length);
-        level = Math.min(1, rms * 6);
-      } else {
-        // CSS fallback — animated pattern so user sees "recording"
-        phaseRef.current += 0.06;
-        level = 0.4 + 0.35 * Math.sin(phaseRef.current * 1.3);
+        level = Math.min(1, Math.sqrt(sumSq / timeDomain.length) * 6);
       }
 
       history.shift();
@@ -92,12 +102,10 @@ export function MicWave({ active, stream }: { active: boolean; stream: MediaStre
         const barH = Math.max(2, amp * (h - 4));
         const x = i * barW;
         const y = (h - barH) / 2;
-
         const grad = draw.createLinearGradient(0, y, 0, y + barH);
         grad.addColorStop(0, 'rgba(124, 58, 237, 0.9)');
         grad.addColorStop(1, 'rgba(167, 139, 250, 0.35)');
         draw.fillStyle = grad;
-
         const r = Math.min(barW * 0.4, barH / 2, 3);
         draw.beginPath();
         draw.roundRect(x + barW * 0.15, y, barW * 0.7, barH, r);
@@ -113,9 +121,7 @@ export function MicWave({ active, stream }: { active: boolean; stream: MediaStre
       cancelAnimationFrame(rafRef.current);
       audioCtxRef.current?.close().catch(() => {});
     };
-  }, [active, stream]);
-
-  if (!active) return null;
+  }, [stream]);
 
   return (
     <canvas
