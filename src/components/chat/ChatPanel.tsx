@@ -1,5 +1,8 @@
 'use client';
 
+// TTS temporarily disabled — set to true to re-enable the speaker button
+const ENABLE_TTS = false;
+
 import { useState, useRef, useEffect, useMemo, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -142,17 +145,20 @@ const MessageBubble = memo(function MessageBubble({
 
         {parsed.content && !isStreaming && (
           <div className={`mt-2 flex items-center flex-wrap gap-1.5 ${isUser ? 'justify-start flex-row-reverse' : ''}`}>
-            <button
-              onClick={handleSpeak}
-              title={speaking ? 'توقف خواندن' : 'خواندن با صدای بلند'}
-              className={`w-7 h-7 rounded-lg flex items-center justify-center border transition ${
-                speaking
-                  ? 'bg-brand-100 dark:bg-brand-950/60 border-brand-300 dark:border-brand-800 text-brand-700 dark:text-brand-300'
-                  : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400'
-              }`}
-            >
-              {speaking ? <Square className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-            </button>
+            {/* TTS temporarily disabled — re-enable by setting ENABLE_TTS=true */}
+            {ENABLE_TTS && (
+              <button
+                onClick={handleSpeak}
+                title={speaking ? 'توقف خواندن' : 'خواندن با صدای بلند'}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center border transition ${
+                  speaking
+                    ? 'bg-brand-100 dark:bg-brand-950/60 border-brand-300 dark:border-brand-800 text-brand-700 dark:text-brand-300'
+                    : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400'
+                }`}
+              >
+                {speaking ? <Square className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+              </button>
+            )}
 
             <button
               onClick={() => onReply(msg)}
