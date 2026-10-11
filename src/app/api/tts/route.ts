@@ -4,64 +4,74 @@ import { createClient } from '@/lib/supabase/server';
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
-// Persian neural voices from Microsoft Edge
-// fa-IR-DilaraNeural → female
-// fa-IR-FaridNeural  → male
 const DEFAULT_VOICE = 'fa-IR-DilaraNeural';
 
 export async function POST(req: NextRequest) {
+  const log: string[] = [];
   try {
+    log.push('start');
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    log.push('auth ok');
 
     const { text, voice } = await req.json();
     if (!text || typeof text !== 'string') {
       return NextResponse.json({ error: 'Missing text' }, { status: 400 });
     }
 
-    // Clean and cap the text
     const cleaned = text
       .replace(/\[منابع:[^\]]+\]/g, '')
       .replace(/[*_`#>]/g, '')
       .replace(/\s+/g, ' ')
       .trim()
-      .slice(0, 3000);
+      .slice(0, 2000);
 
     if (!cleaned) {
       return NextResponse.json({ error: 'Empty text' }, { status: 400 });
     }
+    log.push(`cleaned ${cleaned.length} chars`);
 
-    console.log('[tts] synthesizing', cleaned.length, 'chars, voice:', voice || DEFAULT_VOICE);
-
-    // Dynamic import so the package isn't bundled at build time on the client
-    const { MsEdgeTTS, OUTPUT_FORMAT } = await import('msedge-tts');
-    const xmlEscape = (await import('xml-escape')).default;
+    // Dynamic import
+    const mod: any = await import('msedge-tts');
+    log.push('imported msedge-tts');
+    const { MsEdgeTTS, OUTPUT_FORMAT } = mod;
 
     const tts = new MsEdgeTTS();
-    await tts.setMetadata(
-      voice || DEFAULT_VOICE,
-      OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3
-    );
+    log.push('created instance');
+    await tts.setMetadata(voice || DEFAULT_VOICE, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+    log.push('metadata set');
 
-    const safeText = xmlEscape(cleaned);
-    const { audioStream } = tts.toStream(safeText);
+    const { audioStream } = tts.toStream(cleaned);
+    log.push('stream requested');
 
-    // Collect stream into a buffer
     const chunks: Buffer[] = [];
-    await new Promise<void>((resolve, reject) => {
-      audioStream.on('data', (chunk: Buffer) => chunks.push(chunk));
-      audioStream.on('end', () => resolve());
-      audioStream.on('close', () => resolve());
-      audioStream.on('error', reject);
+    const collected = await new Promise<{ ok: boolean; err?: string }>((resolve) => {
+      const timeout = setTimeout(() => resolve({ ok: false, err: 'timeout after 20s' }), 20_000);
+      audioStream.on('data', (chunk: any) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+      audioStream.on('end', () => { clearTimeout(timeout); resolve({ ok: true }); });
+      audioStream.on('close', () => { clearTimeout(timeout); resolve({ ok: true }); });
+      audioStream.on('error', (err: any) => { clearTimeout(timeout); resolve({ ok: false, err: err?.message || 'stream error' }); });
     });
 
+    if (!collected.ok) {
+      console.error('[tts] stream failed:', collected.err, '| log:', log.join(' → '));
+      return NextResponse.json(
+        { error: 'Stream failed: ' + (collected.err || 'unknown'), steps: log },
+        { status: 500 }
+      );
+    }
+
     if (chunks.length === 0) {
-      return NextResponse.json({ error: 'No audio generated' }, { status: 500 });
+      console.error('[tts] no audio | log:', log.join(' → '));
+      return NextResponse.json({ error: 'No audio chunks', steps: log }, { status: 500 });
     }
 
     const buffer = Buffer.concat(chunks);
-    console.log('[tts] generated', buffer.length, 'bytes');
+    log.push(`audio ${buffer.length} bytes`);
+    console.log('[tts] ✅', log.join(' → '));
 
     return new NextResponse(buffer, {
       status: 200,
@@ -72,9 +82,9 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (e: any) {
-    console.error('[tts] error:', e?.message, e?.stack?.slice(0, 300));
+    console.error('[tts] error:', e?.message, '| steps:', log.join(' → '));
     return NextResponse.json(
-      { error: 'TTS failed: ' + (e?.message || 'unknown') },
+      { error: e?.message || 'unknown', steps: log, stack: e?.stack?.slice(0, 300) },
       { status: 500 }
     );
   }

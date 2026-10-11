@@ -149,7 +149,7 @@ export function Sidebar({
     const active = pathname === `/chat/${c.id}`;
     const isPinned = !!c.is_pinned;
     return (
-      <li key={c.id} className="relative">
+      <li key={c.id} className="relative group">
         <Link
           href={`/chat/${c.id}`}
           onClick={onClose}
@@ -167,16 +167,14 @@ export function Sidebar({
           <span className="text-xs font-semibold truncate">{c.title}</span>
         </Link>
 
-        <div className="absolute left-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
-          {showFolderIcon && folders.length > 0 && (
-            <button
-              onClick={(e) => openMoveMenu(c.id, e)}
-              title="انتقال به پوشه"
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/40 transition"
-            >
-              <FolderInput className="w-3.5 h-3.5" />
-            </button>
-          )}
+        <div className={`absolute left-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 transition-opacity ${active ? 'opacity-100' : 'opacity-60 sm:opacity-0 sm:group-hover:opacity-100'}`}>
+          <button
+            onClick={(e) => openMoveMenu(c.id, e)}
+            title="انتقال به پوشه"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/40 transition"
+          >
+            <FolderInput className="w-3.5 h-3.5" />
+          </button>
           <button
             onClick={(e) => { e.preventDefault(); handlePin(c); }}
             disabled={busyId === c.id}
@@ -206,38 +204,40 @@ export function Sidebar({
     <>
       <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setMovingChatId(null)} />
       <div
-        className="fixed w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden"
+        className="fixed w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden max-h-[70vh] overflow-y-auto"
         style={{
-          top: Math.max(8, Math.min(movePos.y, window.innerHeight - 260)),
-          right: Math.max(8, window.innerWidth - movePos.x),
+          top: Math.max(8, Math.min(movePos.y - 40, window.innerHeight - 260)),
+          right: Math.max(8, window.innerWidth - movePos.x + 40),
           zIndex: 9999,
         }}
         dir="rtl"
       >
-        <div className="px-3 py-2 text-[10px] font-black text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800">
-          انتقال به پوشه
+        <div className="px-3 py-1.5 text-[9px] font-black text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+          انتقال به
         </div>
-        {chats.find((c) => c.id === movingChatId)?.folder_id && (
-          <button
-            onClick={() => moveChat(movingChatId, null)}
-            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition border-b border-slate-100 dark:border-slate-800"
-          >
-            <FolderInput className="w-3.5 h-3.5" />
-            خارج کردن از پوشه
-          </button>
-        )}
+        <button
+          onClick={() => moveChat(movingChatId, null)}
+          className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition border-b border-slate-100 dark:border-slate-800"
+        >
+          <span className="w-3.5 h-3.5 text-slate-400">—</span>
+          <span>بدون پوشه</span>
+        </button>
         {folders.length === 0 ? (
-          <div className="px-3 py-4 text-[11px] text-slate-400 dark:text-slate-500 text-center">
-            پوشه‌ای وجود ندارد. یکی بسازید.
+          <div className="px-3 py-3 text-[10px] text-slate-400 dark:text-slate-500 text-center">
+            پوشه‌ای نیست
           </div>
         ) : (
           folders.map((f) => (
             <button
               key={f.id}
               onClick={() => moveChat(movingChatId, f.id)}
-              className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-brand-50 dark:hover:bg-slate-800 transition"
+              className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-semibold transition ${
+                chats.find((c) => c.id === movingChatId)?.folder_id === f.id
+                  ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300'
+                  : 'text-slate-700 dark:text-slate-200 hover:bg-brand-50 dark:hover:bg-slate-800'
+              }`}
             >
-              <Folder className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+              <Folder className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400 shrink-0" />
               <span className="truncate">{f.name}</span>
             </button>
           ))

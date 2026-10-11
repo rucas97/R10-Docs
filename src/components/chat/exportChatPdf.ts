@@ -13,37 +13,34 @@ export async function exportChatToPdf(fileName: string, messages: Msg[]) {
   const html2canvas = (await import('html2canvas')).default;
   const { jsPDF } = await import('jspdf');
 
-  // Build a hidden container with the full chat, styled for capture
+  // Create container IN the viewport but hidden — html2canvas needs visible layout
   const container = document.createElement('div');
   container.setAttribute('dir', 'rtl');
-  container.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: -20000px;
-    width: 800px;
-    padding: 40px;
-    background: #ffffff;
-    color: #0f172a;
-    font-family: var(--font-vazirmatn), 'Vazirmatn', system-ui, sans-serif;
-    direction: rtl;
-    text-align: right;
-    box-sizing: border-box;
-  `;
+  container.style.cssText = [
+    'position: fixed',
+    'top: 0',
+    'left: 0',
+    'width: 800px',
+    'padding: 40px',
+    'background: #ffffff',
+    'color: #0f172a',
+    'font-family: Vazirmatn, system-ui, -apple-system, sans-serif',
+    'direction: rtl',
+    'text-align: right',
+    'box-sizing: border-box',
+    'opacity: 0',
+    'pointer-events: none',
+    'z-index: -1',
+  ].join(';');
 
   const rows = messages.map((m) => {
     const isUser = m.role === 'user';
     const clean = escapeHtml(
       m.content.replace(/\[منابع:[^\]]+\]/g, '').trim() || '(بدون متن)'
-    );
+    ).replace(/\n/g, '<br/>');
     return `
-      <div style="margin-bottom: 18px; page-break-inside: avoid;">
-        <div style="
-          font-size: 11px;
-          font-weight: 800;
-          color: ${isUser ? '#7c3aed' : '#4c1d95'};
-          margin-bottom: 6px;
-          direction: rtl;
-        ">
+      <div style="margin-bottom: 16px; page-break-inside: avoid; direction: rtl;">
+        <div style="font-size: 11px; font-weight: 800; color: ${isUser ? '#7c3aed' : '#4c1d95'}; margin-bottom: 6px;">
           ${isUser ? '👤 شما' : '🤖 دستیار'}
         </div>
         <div style="
@@ -53,7 +50,6 @@ export async function exportChatToPdf(fileName: string, messages: Msg[]) {
           border-radius: 12px;
           font-size: 13px;
           line-height: 1.9;
-          white-space: pre-wrap;
           word-wrap: break-word;
           direction: rtl;
           text-align: right;
@@ -64,16 +60,8 @@ export async function exportChatToPdf(fileName: string, messages: Msg[]) {
 
   container.innerHTML = `
     <div style="text-align: center; margin-bottom: 24px;">
-      <div style="
-        display: inline-block;
-        font-size: 24px;
-        font-weight: 900;
-        color: #6d28d9;
-        letter-spacing: -0.5px;
-      ">R10-Docs</div>
-      <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
-        ${escapeHtml(fileName)}
-      </div>
+      <div style="display: inline-block; font-size: 24px; font-weight: 900; color: #6d28d9;">R10-Docs</div>
+      <div style="font-size: 12px; color: #64748b; margin-top: 4px;">${escapeHtml(fileName)}</div>
     </div>
     <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 0 0 24px;" />
     ${rows}
@@ -84,14 +72,23 @@ export async function exportChatToPdf(fileName: string, messages: Msg[]) {
   try {
     try { await (document as any).fonts?.ready; } catch {}
 
+    // Wait one frame for layout
+    await new Promise((r) => requestAnimationFrame(r));
+
+    console.log('[export] container size:', container.scrollWidth, 'x', container.scrollHeight);
+
     const canvas = await html2canvas(container, {
       scale: 2,
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
-      windowWidth: 800,
+      width: container.scrollWidth,
+      height: container.scrollHeight,
+      windowWidth: container.scrollWidth,
       windowHeight: container.scrollHeight,
     });
+
+    console.log('[export] canvas size:', canvas.width, 'x', canvas.height);
 
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pdfW = pdf.internal.pageSize.getWidth();
@@ -123,16 +120,20 @@ export async function exportChatToPdf(fileName: string, messages: Msg[]) {
       pageNum++;
     }
 
-    // Use blob URL + manual click — more reliable than pdf.save() in some browsers
     const blob = pdf.output('blob');
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `chat-${fileName.replace(/\.pdf$/i, '')}.pdf`;
+    a.download = `chat-${fileName.replace(/\.pdf$/i, '') || 'export'}.pdf`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+    console.log('[export] ✅ pdf saved, pages:', pageNum);
+  } catch (e: any) {
+    console.error('[export] failed:', e);
+    alert('خروجی PDF ناموفق بود: ' + (e?.message || 'خطای نامشخص'));
   } finally {
     document.body.removeChild(container);
   }

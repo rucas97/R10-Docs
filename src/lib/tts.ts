@@ -12,7 +12,15 @@ export async function speak(text: string, onEnd?: () => void): Promise<boolean> 
     });
 
     if (!res.ok) {
-      console.error('[tts] server error:', res.status);
+      let detail = '';
+      try {
+        const data = await res.json();
+        detail = data.error || '';
+        console.error('[tts] server error:', res.status, data);
+      } catch {
+        console.error('[tts] server error:', res.status);
+      }
+      alert('پخش صدا ناموفق بود: ' + (detail || res.status));
       onEnd?.();
       return false;
     }

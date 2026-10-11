@@ -6,7 +6,6 @@ import {
   Send, Lightbulb, Loader2, Mic, Plus, TrendingUp, BarChart3, X,
 } from 'lucide-react';
 import { usePrefs } from '@/lib/preferences';
-import { MicCircle } from './MicCircle';
 
 const FALLBACK = [
   'این سند را در سه نکته کلیدی خلاصه کن.',
@@ -264,13 +263,13 @@ export function ChatInput({
         type="button"
         onClick={listening ? stopListening : startListening}
         title={listening ? 'توقف ضبط' : 'گفتار به متن'}
-        className={`w-9 h-9 rounded-2xl flex items-center justify-center transition relative z-10 ${
+        className={`relative z-10 rounded-full flex items-center justify-center transition-all duration-200 ${
           listening
-            ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 animate-pulse'
-            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-700'
+            ? 'w-11 h-11 bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg shadow-brand-500/50 scale-105 ring-4 ring-brand-300/40 dark:ring-brand-700/40 animate-pulse'
+            : 'w-9 h-9 text-slate-500 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-700'
         }`}
       >
-        <Mic className="w-4 h-4" />
+        <Mic className={listening ? 'w-5 h-5' : 'w-4 h-4'} />
       </button>
       <button
         type="button"
@@ -335,8 +334,6 @@ export function ChatInput({
         )}
 
         <div className="relative rounded-3xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 transition p-2 overflow-hidden">
-          <MicCircle active={listening} />
-
           <textarea
             ref={textareaRef}
             value={input}
