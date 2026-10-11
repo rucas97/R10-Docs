@@ -44,6 +44,8 @@ export function Sidebar({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [menu, setMenu] = useState<MenuState>(null);
   const [moveModal, setMoveModal] = useState<string | null>(null);
+  const [deleteFolderModal, setDeleteFolderModal] = useState<string | null>(null);
+  const [alsoDeleteChats, setAlsoDeleteChats] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -122,12 +124,31 @@ export function Sidebar({
     router.refresh();
   };
 
-  const deleteFolder = async (folder: FolderT) => {
-    if (!confirm(`پوشه «${folder.name}» حذف شود؟ گفتگوها باقی می‌مانند.`)) return;
-    const res = await fetch(`/api/folders/${folder.id}`, { method: 'DELETE' });
+  const openDeleteFolder = (folderId: string) => {
+    setAlsoDeleteChats(false);
+    setDeleteFolderModal(folderId);
+  };
+
+  const confirmDeleteFolder = async () => {
+    const folderId = deleteFolderModal;
+    if (!folderId) return;
+    const folder = folders.find((f) => f.id === folderId);
+    if (!folder) return;
+
+    const res = await fetch(
+      `/api/folders/${folderId}?deleteChats=${alsoDeleteChats}`,
+      { method: 'DELETE' }
+    );
+    setDeleteFolderModal(null);
     if (!res.ok) { showToast('حذف ناموفق'); return; }
-    setFolders((f) => f.filter((x) => x.id !== folder.id));
-    setChats((c) => c.map((x) => x.folder_id === folder.id ? { ...x, folder_id: null } : x));
+
+    setFolders((f) => f.filter((x) => x.id !== folderId));
+    if (alsoDeleteChats) {
+      setChats((c) => c.filter((x) => x.folder_id !== folderId));
+    } else {
+      setChats((c) => c.map((x) => x.folder_id === folderId ? { ...x, folder_id: null } : x));
+    }
+    showToast(alsoDeleteChats ? 'پوشه و گفتگوها حذف شدند' : 'پوشه حذف شد');
     router.refresh();
   };
 
@@ -149,16 +170,28 @@ export function Sidebar({
     router.refresh();
   };
 
+  const MENU_W = 192; // w-48
+  const MENU_H = 160;
+  const GAP = 8;
+
   const openMenu = (chatId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setMoveModal(null);
-    setMenu({
-      chatId,
-      x: Math.min(r.right, window.innerWidth - 12),
-      y: Math.min(r.bottom + 4, window.innerHeight - 180),
-    });
+
+    // Try to open on the LEFT of the button (RTL-appropriate).
+    // Fall back to the RIGHT if there's not enough room.
+    let left = r.left - MENU_W - GAP;
+    if (left < GAP) left = r.right + GAP;
+
+    // Clamp hard against the viewport so the menu is always fully visible
+    left = Math.max(GAP, Math.min(left, window.innerWidth - MENU_W - GAP));
+
+    let top = r.top;
+    top = Math.max(GAP, Math.min(top, window.innerHeight - MENU_H - GAP));
+
+    setMenu({ chatId, x: left, y: top });
   };
 
   // ---- Filtering ----
@@ -184,7 +217,7 @@ export function Sidebar({
           className="fixed w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden"
           style={{
             top: menu.y,
-            right: Math.max(8, window.innerWidth - menu.x),
+            left: menu.x,
             zIndex: 9999,
           }}
           dir="rtl"
@@ -212,6 +245,72 @@ export function Sidebar({
           </button>
         </div>
       </>,
+      document.body
+    );
+  };
+
+  const renderDeleteFolderModal = () => {
+    if (!deleteFolderModal || !mounted) return null;
+    const folder = folders.find((f) => f.id === deleteFolderModal);
+    if (!folder) return null;
+    const chatsInFolder = chats.filter((c) => c.folder_id === folder.id);
+
+    return createPortal(
+      <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 999999 }} dir="rtl">
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDeleteFolderModal(null)} />
+        <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden">
+          <div className="h-14 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800">
+            <p className="text-sm font-black text-slate-800 dark:text-slate-100">حذف پوشه</p>
+            <button
+              onClick={() => setDeleteFolderModal(null)}
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="p-5">
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+              آیا از حذف پوشه «<span className="font-black text-slate-800 dark:text-slate-100">{folder.name}</span>» مطمئن هستید؟
+            </p>
+
+            {chatsInFolder.length > 0 && (
+              <label className="flex items-start gap-3 p-3 rounded-2xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900 cursor-pointer mb-4">
+                <input
+                  type="checkbox"
+                  checked={alsoDeleteChats}
+                  onChange={(e) => setAlsoDeleteChats(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-rose-600 shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-rose-700 dark:text-rose-300 mb-0.5">
+                    گفتگوهای داخل پوشه هم حذف شوند؟
+                  </p>
+                  <p className="text-[10px] text-rose-600/80 dark:text-rose-400/80 leading-relaxed">
+                    در این پوشه {chatsInFolder.length} گفتگو وجود دارد. اگر تیک نزنید، گفتگوها به بخش «گفتگوهای اخیر» منتقل می‌شوند.
+                  </p>
+                </div>
+              </label>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeleteFolderModal(null)}
+                className="flex-1 px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition"
+              >
+                انصراف
+              </button>
+              <button
+                onClick={confirmDeleteFolder}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-md shadow-rose-500/20"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                حذف پوشه
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>,
       document.body
     );
   };
@@ -337,6 +436,7 @@ export function Sidebar({
     <div className="flex flex-col h-full relative">
       {renderMenuPortal()}
       {renderMoveModal()}
+      {renderDeleteFolderModal()}
 
       {/* Header */}
       <div className="h-16 flex items-center px-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
@@ -507,7 +607,7 @@ export function Sidebar({
                             <span className="text-[10px]">✎</span>
                           </button>
                           <button
-                            onClick={() => deleteFolder(f)}
+                            onClick={() => openDeleteFolder(f.id)}
                             title="حذف پوشه"
                             className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
                           >

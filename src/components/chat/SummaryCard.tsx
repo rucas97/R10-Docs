@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, X, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
+import { Sparkles, X, RefreshCw, Loader2, AlertCircle, Copy, Check } from 'lucide-react';
 
 export function SummaryCard({
   chatId,
@@ -16,8 +16,17 @@ export function SummaryCard({
   const [text, setText] = useState(summary);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const hasSummary = text && text.length >= 20;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  };
 
   const regenerate = async () => {
     setLoading(true);
