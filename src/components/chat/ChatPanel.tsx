@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { extractCitations, toPersianNumber, type Citation } from '@/lib/citations';
-import { speak, stopSpeaking, ttsSupported } from '@/lib/tts';
+import { speak, stopSpeaking, ttsSupported, hasVoiceAvailable } from '@/lib/tts';
 import { SourceModal } from './SourceModal';
 import { PdfViewer } from './PdfViewer';
 import { ChatInput } from './ChatInput';
@@ -63,6 +63,17 @@ const MessageBubble = memo(function MessageBubble({
     if (speaking) {
       stopSpeaking();
       setSpeaking(false);
+      return;
+    }
+    const hasVoice = await hasVoiceAvailable();
+    if (!hasVoice) {
+      alert(
+        'برای پخش صدای فارسی، ابتدا باید بسته زبان فارسی را در سیستم خود نصب کنید:\n\n' +
+        '• ویندوز: Settings → Time & Language → Language → Add a language → فارسی → نصب\n' +
+        '• اندروید: Settings → System → Languages → Text-to-speech → Google → نصب زبان فارسی\n' +
+        '• مک: System Settings → Accessibility → Spoken Content → Manage Voices → Persian\n\n' +
+        'پس از نصب، صفحه را دوباره بارگذاری کنید.'
+      );
       return;
     }
     const ok = await speak(parsed.content, () => setSpeaking(false));

@@ -1,81 +1,104 @@
-let currentAudio: HTMLAudioElement | null = null;
-let currentUrl: string | null = null;
+let currentUtterance: SpeechSynthesisUtterance | null = null;
+let voicesLoaded = false;
+
+function loadVoices(): Promise<SpeechSynthesisVoice[]> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return resolve([]);
+    const ready = window.speechSynthesis.getVoices();
+    if (ready.length > 0) {
+      voicesLoaded = true;
+      return resolve(ready);
+    }
+    const handler = () => {
+      voicesLoaded = true;
+      window.speechSynthesis.onvoiceschanged = null;
+      resolve(window.speechSynthesis.getVoices());
+    };
+    window.speechSynthesis.onvoiceschanged = handler;
+    setTimeout(() => resolve(window.speechSynthesis.getVoices()), 1500);
+  });
+}
+
+function pickVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+  const find = (prefix: string) =>
+    voices.find((v) => v.lang.toLowerCase().startsWith(prefix));
+
+  // Priority: Persian → Arabic (shares script) → null
+  return (
+    find('fa-ir') ||
+    find('fa') ||
+    find('ar-sa') ||
+    find('ar-eg') ||
+    find('ar') ||
+    null
+  );
+}
+
+export async function hasVoiceAvailable(): Promise<boolean> {
+  const voices = await loadVoices();
+  return !!pickVoice(voices);
+}
+
+export async function getVoiceInfo(): Promise<{ available: boolean; voiceName: string | null; lang: string | null }> {
+  const voices = await loadVoices();
+  const v = pickVoice(voices);
+  return {
+    available: !!v,
+    voiceName: v?.name || null,
+    lang: v?.lang || null,
+  };
+}
 
 export async function speak(text: string, onEnd?: () => void): Promise<boolean> {
   stopSpeaking();
 
-  try {
-    const res = await fetch('/api/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
-    });
-
-    if (!res.ok) {
-      let detail = '';
-      try {
-        const data = await res.json();
-        detail = data.error || '';
-      } catch {}
-      console.error('[tts] server error:', res.status, detail);
-      if (res.status === 500 && detail.includes('AI_GATEWAY_API_KEY')) {
-        alert('کلید Vercel AI Gateway تنظیم نشده است. برای فعال‌سازی صدای فارسی، AI_GATEWAY_API_KEY را در Vercel تنظیم کنید.');
-      }
-      onEnd?.();
-      return false;
-    }
-
-    const blob = await res.blob();
-    if (blob.size === 0) {
-      console.error('[tts] empty audio');
-      onEnd?.();
-      return false;
-    }
-
-    const url = URL.createObjectURL(blob);
-    currentUrl = url;
-
-    const audio = new Audio(url);
-    currentAudio = audio;
-
-    audio.onended = () => {
-      if (currentUrl === url) {
-        URL.revokeObjectURL(url);
-        currentUrl = null;
-        currentAudio = null;
-      }
-      onEnd?.();
-    };
-    audio.onerror = () => {
-      console.error('[tts] playback error');
-      if (currentUrl === url) {
-        URL.revokeObjectURL(url);
-        currentUrl = null;
-        currentAudio = null;
-      }
-      onEnd?.();
-    };
-
-    await audio.play();
-    return true;
-  } catch (e: any) {
-    console.error('[tts] error:', e);
+  if (typeof window === 'undefined' || !window.speechSynthesis) {
     onEnd?.();
     return false;
   }
+
+  const clean = text
+    .replace(/\[منابع:[^\]]+\]/g, '')
+    .replace(/[*_`#>]/g, '')
+    .trim();
+
+  if (!clean) {
+    onEnd?.();
+    return false;
+  }
+
+  const voices = await loadVoices();
+  const voice = pickVoice(voices);
+
+  if (!voice) {
+    onEnd?.();
+    return false;
+  }
+
+  const u = new SpeechSynthesisUtterance(clean.slice(0, 4000));
+  u.voice = voice;
+  u.lang = voice.lang;
+  u.rate = 0.95;
+  u.pitch = 1;
+
+  u.onend = () => { currentUtterance = null; onEnd?.(); };
+  u.onerror = (e) => {
+    console.warn('[tts] error:', e);
+    currentUtterance = null;
+    onEnd?.();
+  };
+
+  currentUtterance = u;
+  window.speechSynthesis.speak(u);
+  return true;
 }
 
 export function stopSpeaking(): void {
-  if (currentAudio) {
-    try { currentAudio.pause(); currentAudio.currentTime = 0; } catch {}
-    currentAudio = null;
-  }
-  if (currentUrl) {
-    URL.revokeObjectURL(currentUrl);
-    currentUrl = null;
-  }
+  if (typeof window === 'undefined') return;
+  window.speechSynthesis?.cancel();
+  currentUtterance = null;
 }
 
 export function ttsSupported(): boolean {
-  return true;
+  return typeof window !== 'undefined' && !!window.speechSynthesis;
 }
