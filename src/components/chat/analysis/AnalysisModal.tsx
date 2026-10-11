@@ -1,5 +1,6 @@
 'use client';
 
+import { createPortal } from 'react-dom';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   X, Loader2, RefreshCw, Download, TrendingUp, TrendingDown,

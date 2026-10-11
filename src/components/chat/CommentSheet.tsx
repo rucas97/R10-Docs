@@ -1,5 +1,6 @@
 'use client';
 
+import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { X, Send, Loader2, Trash2, MessageSquare } from 'lucide-react';
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { SettingsModal } from '@/components/chat/settings/SettingsModal';
 import {
   Sparkles, Sun, Moon, Upload, FileUp, Link as LinkIcon,
   CloudUpload, FolderOpen, Check, Lock, ArrowLeft,
@@ -19,6 +20,7 @@ export default function LandingPage() {
   const [uploadMode, setUploadMode] = useState<UploadMode>('file');
   const [user, setUser] = useState<{ email: string } | null>(null);
   const [avatarMenu, setAvatarMenu] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -147,7 +149,7 @@ export default function LandingPage() {
                         پنل کاربری
                       </button>
                       <button
-                        onClick={() => { setAvatarMenu(false); alert('تنظیمات به‌زودی'); }}
+                        onClick={() => { setAvatarMenu(false); setShowSettings(true); }}
                         className="w-full text-right px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
                       >
                         تنظیمات
@@ -422,6 +424,8 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </div>
   );
 }

@@ -43,33 +43,77 @@ export async function POST(req: NextRequest) {
       maxTokens: 1200,
     }, 4);
 
-    // Generate 3 real, document-specific suggested questions
+    // Generate EXACTLY 3 complete questions
     let questions: string[] = [];
     try {
       const { text: qtext } = await generateTextWithRetry({
         systemPrompt:
-          'شما سوال‌ساز حرفه‌ای هستید. بر اساس محتوای سند، سه سوال کلیدی و *متفاوت* می‌سازید که پاسخ آن‌ها مستقیماً در سند وجود دارد.',
+          'شما یک سوال‌ساز حرفه‌ای هستید. فقط سوال می‌نویسید. هیچ توضیحی اضافه نمی‌کنید.',
         prompt:
-          'بر اساس متن سند زیر، دقیقاً ۳ سوال فارسی بساز که:\n' +
-          '۱) هر کدام به یک بخش متفاوت از سند مربوط باشند\n' +
-          '۲) از نام‌ها، اعداد، مفاهیم یا اصطلاحات مشخص *خودِ سند* استفاده کنند\n' +
-          '۳) هر سوال کوتاه (حداکثر ۱۲ کلمه) و مشخص باشد\n' +
-          '۴) سوالات عمومی مثل «این سند درباره چیست؟» نباشند\n\n' +
-          'خروجی را دقیقاً به این شکل بده — فقط سه خط، هر خط یک سوال، بدون شماره، بدون علامت، بدون توضیح:\n\n' +
+          'بر اساس سند زیر، دقیقاً ۳ سوال فارسی کامل و مشخص بساز.\n\n' +
+          'قوانین مطلق:\n' +
+          '۱) هر سوال باید یک جمله کامل باشد (با «؟» تمام شود)\n' +
+          '۲) بین ۶ تا ۱۵ کلمه\n' +
+          '۳) هر سه سوال به بخش‌های مختلف سند مربوط باشند\n' +
+          '۴) از اسم‌ها، اعداد یا اصطلاحات مشخص سند استفاده کنند\n' +
+          '۵) از سوالات کلی مثل «سند درباره چیست؟» خودداری کن\n\n' +
+          'قالب خروجی (دقیقاً همین‌طور بنویس، هیچ چیز دیگری اضافه نکن):\n' +
+          '۱. [سوال اول کامل؟]\n' +
+          '۲. [سوال دوم کامل؟]\n' +
+          '۳. [سوال سوم کامل؟]\n\n' +
           'متن سند:\n' + documentText.slice(0, 12_000),
-        maxTokens: 400,
-      }, 2);
+        maxTokens: 500,
+      }, 3);
 
-      questions = qtext
-        .split('\n')
-        .map((l) => l.trim())
-        .map((l) => l.replace(/^[\d\-•*)\s.]+/, '').trim())
-        .filter((l) => l.length > 8 && l.length < 200)
-        .slice(0, 3);
+      // Parse: split by newlines, extract numbered items
+      const lines = qtext.split('\n').map((l) => l.trim()).filter(Boolean);
+      const parsed: string[] = [];
+      for (const line of lines) {
+        // Strip Persian/Arabic/Latin numbering and bullets
+        const cleaned = line
+          .replace(/^[\d\u06F0-\u06F9]+[.\-)\s]+/, '')
+          .replace(/^[•*\-]+\s*/, '')
+          .trim();
+        // Must look like a complete question (ends with ؟ or ?)
+        if (cleaned.length >= 10 && cleaned.length <= 250 && /[؟?]$/.test(cleaned)) {
+          parsed.push(cleaned);
+        }
+      }
 
-      console.log('[summarize] questions:', questions.length);
+      // If fewer than 3 got through, try a lenient pass (no ؟ requirement)
+      if (parsed.length < 3) {
+        for (const line of lines) {
+          if (parsed.length >= 3) break;
+          const cleaned = line
+            .replace(/^[\d\u06F0-\u06F9]+[.\-)\s]+/, '')
+            .replace(/^[•*\-]+\s*/, '')
+            .trim();
+          if (cleaned.length >= 15 && cleaned.length <= 250 && !parsed.includes(cleaned)) {
+            // Ensure it ends with ؟ for consistency
+            parsed.push(/[؟?]$/.test(cleaned) ? cleaned : cleaned + '؟');
+          }
+        }
+      }
+
+      questions = parsed.slice(0, 3);
+      console.log('[summarize] parsed questions:', questions.length, questions);
+
+      // If still not 3, fill from generic fallback
+      const genericFallbacks = [
+        'مهم‌ترین یافته‌های این سند چیست؟',
+        'نویسنده به چه نتیجه‌گیری اصلی رسیده است؟',
+        'چه محدودیت‌ها یا چالش‌هایی در سند مطرح شده است؟',
+      ];
+      while (questions.length < 3) {
+        questions.push(genericFallbacks[questions.length]);
+      }
     } catch (qe: any) {
       console.warn('[summarize] questions failed:', qe?.message);
+      questions = [
+        'مهم‌ترین یافته‌های این سند چیست؟',
+        'نویسنده به چه نتیجه‌گیری اصلی رسیده است؟',
+        'چه محدودیت‌ها یا چالش‌هایی در سند مطرح شده است؟',
+      ];
     }
 
     // Save

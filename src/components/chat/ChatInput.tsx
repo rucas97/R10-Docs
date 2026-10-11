@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import {
-  Send, Lightbulb, Loader2, Mic, Plus, TrendingUp, BarChart3, X,
+  Send, Lightbulb, Loader2, Mic, Plus, TrendingUp, BarChart3,
 } from 'lucide-react';
 import { usePrefs } from '@/lib/preferences';
 import { MicWave } from './MicWave';
@@ -36,6 +36,7 @@ export function ChatInput({
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
   const recognitionRef = useRef<any>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const finalTextRef = useRef('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const items = (suggestions && suggestions.length > 0) ? suggestions : FALLBACK;
@@ -48,63 +49,76 @@ export function ChatInput({
   }, [input]);
 
   const startListening = async () => {
-    // 1) Get the audio stream FIRST so the analyser can drive the wave.
-    //    Chrome allows SpeechRecognition to share the mic AFTER a getUserMedia
-    //    stream is already active on the page. Doing it in this order avoids
-    //    the "aborted" error that kills transcription.
-    let stream: MediaStream | null = null;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      setMicStream(stream);
-    } catch (e) {
-      console.warn('[mic] getUserMedia failed:', e);
-      alert('دسترسی به میکروفون داده نشد.');
-      return;
-    }
-
-    // 2) Start SpeechRecognition
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
-      alert('مرورگر شما از تبدیل گفتار به متن پشتیبانی نمی‌کند. از Chrome استفاده کنید.');
-      stream.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-      setMicStream(null);
+      alert('مرورگر شما از تبدیل گفتار به متن پشتیبانی نمی‌کند. از Chrome یا Edge استفاده کنید.');
       return;
     }
 
+    // Start typing FIRST so it gets mic priority
     const rec = new SR();
     rec.lang = 'fa-IR';
     rec.continuous = true;
     rec.interimResults = true;
+    rec.maxAlternatives = 1;
 
-    let finalText = '';
+    finalTextRef.current = input; // preserve what's already typed
+
     rec.onresult = (e: any) => {
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const tr = e.results[i][0].transcript;
-        if (e.results[i].isFinal) finalText += tr + ' ';
-        else interim += tr;
+        if (e.results[i].isFinal) {
+          finalTextRef.current += (finalTextRef.current ? ' ' : '') + tr.trim();
+        } else {
+          interim += tr;
+        }
       }
-      setInput((finalText + interim).trim());
+      setInput((finalTextRef.current + ' ' + interim).trim());
     };
+
     rec.onerror = (e: any) => {
       console.warn('[mic] recognition error:', e?.error);
+      if (e?.error === 'not-allowed' || e?.error === 'service-not-allowed') {
+        alert('دسترسی به میکروفون داده نشد. لطفاً در تنظیمات مرورگر اجازه دهید.');
+        setListening(false);
+      }
     };
+
     rec.onend = () => {
-      // Chrome stops after a pause — restart if user hasn't tapped stop
-      if (recognitionRef.current && streamRef.current) {
+      // Chrome stops on silence — restart if user hasn't tapped stop
+      if (recognitionRef.current && streamRef.current !== null) {
+        try { rec.start(); } catch {}
+      } else if (recognitionRef.current && listening) {
         try { rec.start(); } catch {}
       }
     };
 
     try {
       rec.start();
+      recognitionRef.current = rec;
+      setListening(true);
+      console.log('[mic] recognition started');
     } catch (e) {
-      console.warn('[mic] rec.start failed:', e);
+      console.error('[mic] rec.start failed:', e);
+      alert('شروع ضبط ناموفق بود.');
+      return;
     }
-    recognitionRef.current = rec;
-    setListening(true);
+
+    // Now try to get the audio stream for the wave visualization.
+    // If this fails, typing still works — we just lose the audio-reactive wave.
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      setMicStream(stream);
+      console.log('[mic] audio stream ready for wave');
+    } catch (e) {
+      console.warn('[mic] getUserMedia failed — wave will use CSS fallback:', e);
+      // Set a fake stream so MicWave uses CSS animation
+      const fakeStream = new MediaStream();
+      streamRef.current = fakeStream;
+      setMicStream(null);
+    }
   };
 
   const stopListening = () => {
@@ -114,6 +128,7 @@ export function ChatInput({
     streamRef.current = null;
     setMicStream(null);
     setListening(false);
+    finalTextRef.current = '';
   };
 
   const submit = () => {
@@ -182,15 +197,8 @@ export function ChatInput({
     <div className="shrink-0 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-2.5 sm:p-4">
       <div className="max-w-3xl mx-auto min-w-0">
 
-        {/* Reply preview — sticky above the input */}
         {replyTo && (
           <div className="mb-2 flex items-start gap-2 px-3 py-2 rounded-2xl bg-brand-50 dark:bg-brand-950/40 border border-brand-200 dark:border-brand-800 border-e-4 border-e-brand-500">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
-                 className="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0 mt-0.5">
-              <path d="M9 17l-5-5 5-5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M4 12h9a6 6 0 0 1 6 6v1" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M4 12h7a8 8 0 0 1 8 8" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
-            </svg>
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-black text-brand-700 dark:text-brand-300 mb-0.5">
                 {replyTo.role === 'user' ? 'پاسخ به پیام شما' : 'پاسخ به دستیار'}
@@ -201,7 +209,7 @@ export function ChatInput({
             </div>
             <button onClick={onCancelReply}
               className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition shrink-0">
-              <X className="w-3.5 h-3.5" />
+              <span className="text-xs">✕</span>
             </button>
           </div>
         )}
@@ -219,7 +227,6 @@ export function ChatInput({
         )}
 
         <div className="relative rounded-3xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 transition p-2 overflow-hidden">
-          {/* Mic wave overlay */}
           <MicWave active={listening} stream={micStream} />
 
           <textarea
@@ -230,7 +237,7 @@ export function ChatInput({
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
             }}
             rows={1}
-            placeholder={listening ? 'در حال ضبط...' : 'سوالی درباره این سند بپرسید...'}
+            placeholder={listening ? 'در حال ضبط... صحبت کنید' : 'سوالی درباره این سند بپرسید...'}
             disabled={streaming}
             className="relative z-10 w-full resize-none bg-transparent outline-none border-0 px-2 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 disabled:opacity-60"
           />
@@ -239,6 +246,12 @@ export function ChatInput({
             {sendOnLeft ? <>{rightActions}{leftActions}</> : <>{leftActions}{rightActions}</>}
           </div>
         </div>
+
+        {listening && (
+          <p className="mt-2 text-[10px] text-rose-500 dark:text-rose-400 text-center animate-pulse">
+            🎤 در حال ضبط — صحبت کنید (Chrome/Edge)
+          </p>
+        )}
       </div>
     </div>
   );
