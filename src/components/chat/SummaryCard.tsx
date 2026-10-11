@@ -25,7 +25,9 @@ export function SummaryCard({
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {}
+    } catch {
+      alert('کپی ناموفق بود');
+    }
   };
 
   const regenerate = async () => {
@@ -49,7 +51,7 @@ export function SummaryCard({
     }
   };
 
-  // Collapsed state — sticky pill that floats top-right
+  // Collapsed state
   if (!open) {
     return (
       <button
@@ -66,22 +68,53 @@ export function SummaryCard({
     );
   }
 
-  // Expanded state — full card
+  // Expanded state
   return (
     <div className="mx-4 mt-4 p-4 rounded-2xl bg-gradient-to-l from-brand-50 to-indigo-50 dark:from-brand-950/40 dark:to-indigo-950/40 border border-brand-100 dark:border-brand-900 relative shrink-0">
+      {/* Close button (top-left) */}
       <button
         onClick={() => setOpen(false)}
-        className="absolute top-2 left-2 w-7 h-7 rounded-lg flex items-center justify-center text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/50 transition"
+        className="absolute top-2 left-2 w-7 h-7 rounded-lg flex items-center justify-center text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/50 active:scale-90 transition"
         aria-label="بستن"
-        title="بستن خلاصه"
+        title="جمع کردن خلاصه"
       >
-        <X className="w-3.5 h-3.5" />
+        <X className="w-4 h-4" />
       </button>
 
-      <div className="flex items-start gap-2.5 pl-8">
+      <div className="flex items-start gap-2.5">
         <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0 mt-0.5" />
+
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-black text-brand-700 dark:text-brand-300 mb-1">خلاصه سند</p>
+          {/* Header row: label + copy + regenerate */}
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <p className="text-[11px] font-black text-brand-700 dark:text-brand-300">خلاصه سند</p>
+
+            <div className="flex items-center gap-1">
+              {hasSummary && (
+                <button
+                  onClick={handleCopy}
+                  title={copied ? 'کپی شد' : 'کپی خلاصه'}
+                  className={`h-7 px-2 rounded-lg flex items-center gap-1 text-[10px] font-bold transition active:scale-95 ${
+                    copied
+                      ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400'
+                      : 'bg-white/70 dark:bg-slate-800/70 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800'
+                  }`}
+                >
+                  {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span className="hidden xs:inline">{copied ? 'کپی شد' : 'کپی'}</span>
+                </button>
+              )}
+
+              <button
+                onClick={regenerate}
+                disabled={loading}
+                title="تولید مجدد"
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-brand-600 dark:text-brand-400 bg-white/70 dark:bg-slate-800/70 border border-brand-200 dark:border-brand-800 hover:bg-brand-100 dark:hover:bg-slate-700 active:scale-95 transition disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          </div>
 
           {loading ? (
             <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 py-1">
@@ -95,7 +128,7 @@ export function SummaryCard({
               <p className="text-xs text-slate-500 dark:text-slate-400">خلاصه‌ای موجود نیست.</p>
               <button
                 onClick={regenerate}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-[11px] font-bold transition shrink-0"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-[11px] font-bold transition shrink-0 active:scale-95"
               >
                 <RefreshCw className="w-3 h-3" />
                 تولید خلاصه
