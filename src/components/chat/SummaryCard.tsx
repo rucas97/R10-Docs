@@ -17,7 +17,7 @@ export function SummaryCard({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!open) return null;
+  const hasSummary = text && text.length >= 20;
 
   const regenerate = async () => {
     setLoading(true);
@@ -34,25 +34,42 @@ export function SummaryCard({
       setText(data.summary);
       router.refresh();
     } catch {
-      setError('خلاصه‌سازی ناموفق بود. دوباره تلاش کنید.');
+      setError('خلاصه‌سازی ناموفق بود.');
     } finally {
       setLoading(false);
     }
   };
 
-  const hasSummary = text && text.length >= 20;
+  // Collapsed state — sticky pill that floats top-right
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        title="نمایش خلاصه سند"
+        className="self-end me-4 mt-2 z-10 inline-flex items-center gap-2 px-3 py-1.5 rounded-full
+          bg-gradient-to-l from-brand-500 to-indigo-500 hover:from-brand-600 hover:to-indigo-600
+          text-white text-[11px] font-black shadow-md shadow-brand-500/30
+          active:scale-95 transition-all"
+      >
+        <Sparkles className="w-3.5 h-3.5" />
+        <span>خلاصه سند</span>
+      </button>
+    );
+  }
 
+  // Expanded state — full card
   return (
     <div className="mx-4 mt-4 p-4 rounded-2xl bg-gradient-to-l from-brand-50 to-indigo-50 dark:from-brand-950/40 dark:to-indigo-950/40 border border-brand-100 dark:border-brand-900 relative shrink-0">
       <button
         onClick={() => setOpen(false)}
-        className="absolute top-2 left-2 w-6 h-6 rounded-lg flex items-center justify-center text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/50 transition"
+        className="absolute top-2 left-2 w-7 h-7 rounded-lg flex items-center justify-center text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/50 transition"
         aria-label="بستن"
+        title="بستن خلاصه"
       >
         <X className="w-3.5 h-3.5" />
       </button>
 
-      <div className="flex items-start gap-2.5 pl-6">
+      <div className="flex items-start gap-2.5 pl-8">
         <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-black text-brand-700 dark:text-brand-300 mb-1">خلاصه سند</p>
@@ -66,9 +83,7 @@ export function SummaryCard({
             <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-200">{text}</p>
           ) : (
             <div className="flex items-center justify-between gap-3 py-1">
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                خلاصه‌ای تولید نشده است.
-              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">خلاصه‌ای موجود نیست.</p>
               <button
                 onClick={regenerate}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-[11px] font-bold transition shrink-0"

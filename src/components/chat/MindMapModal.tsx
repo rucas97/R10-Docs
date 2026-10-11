@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useState as useMountedState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ReactFlow,
   Background,
@@ -27,6 +28,8 @@ export function MindMapModal({
   initial: MindMapTree | null;
   onClose: () => void;
 }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const [tree, setTree] = useState<MindMapTree | null>(initial);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -142,8 +145,10 @@ export function MindMapModal({
     };
   }, [onClose]);
 
-  return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-2 sm:p-6" dir="rtl">
+  if (!mounted) return null;
+
+  const content = (
+    <div className="fixed inset-0 flex items-center justify-center p-2 sm:p-6" style={{ zIndex: 2147483647 }} dir="rtl">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-6xl h-[92dvh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
 
@@ -213,4 +218,6 @@ export function MindMapModal({
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }

@@ -15,6 +15,8 @@ export function CommentSheet({
   onClose: () => void;
   onCountChange: (n: number) => void;
 }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const [comments, setComments] = useState<Comment[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
@@ -55,8 +57,10 @@ export function CommentSheet({
     await load();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" dir="rtl">
+  if (!mounted) return null;
+
+  const content = (
+    <div className="fixed inset-0 flex items-end sm:items-center justify-center" style={{ zIndex: 2147483647 }} dir="rtl">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full sm:max-w-md max-h-[80vh] bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden">
         <div className="h-14 shrink-0 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800">
@@ -125,4 +129,6 @@ export function CommentSheet({
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }

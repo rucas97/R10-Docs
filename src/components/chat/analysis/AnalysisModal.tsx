@@ -20,6 +20,8 @@ export function AnalysisModal({
   initial: any;
   onClose: () => void;
 }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const [analysis, setAnalysis] = useState<any>(initial);
   const [loading, setLoading] = useState(!initial);
   const [exporting, setExporting] = useState(false);
@@ -77,8 +79,10 @@ export function AnalysisModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-2 sm:p-6" dir="rtl">
+  if (!mounted) return null;
+
+  const content = (
+    <div className="fixed inset-0 flex items-center justify-center p-2 sm:p-6" style={{ zIndex: 2147483647 }} dir="rtl">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative w-full max-w-5xl h-[92dvh] bg-slate-50 dark:bg-slate-950 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
@@ -243,4 +247,6 @@ export function AnalysisModal({
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }

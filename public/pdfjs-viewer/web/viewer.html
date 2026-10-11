@@ -34,7 +34,16 @@ See https://github.com/adobe-type-tools/cmap-resources
     <link rel="stylesheet" href="viewer.css">
 
   <script src="viewer.mjs" type="module"></script>
-  </head>
+  
+<style>
+  /* Hide PDF.js default toolbar — we provide our own minimal one */
+  #toolbarContainer, #secondaryToolbar, #sidebarContainer { display: none !important; }
+  #mainContainer { top: 0 !important; }
+  #viewerContainer { top: 0 !important; }
+  body { background: #e2e8f0 !important; }
+  .pdfViewer .page { border: none !important; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+</style>
+</head>
 
   <body tabindex="0">
     <div id="outerContainer">

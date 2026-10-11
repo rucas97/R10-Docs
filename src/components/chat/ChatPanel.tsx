@@ -87,19 +87,21 @@ const MessageBubble = memo(function MessageBubble({
       </div>
 
       {/* Wrapper: bubble + side reply arrow */}
-      <div className={`relative max-w-[85%] min-w-0 ${isUser ? 'flex flex-col items-end' : ''}`}>
-        {/* Reply arrow — sits on the OUTER edge of the bubble */}
+      <div className={`relative max-w-[85%] min-w-0 ${isUser ? 'flex flex-col items-end' : ''}`} style={{ overflow: 'visible' }}>
+        {/* Reply arrow — always visible on outer edge */}
         {parsed.content && !isStreaming && (
           <button
             onClick={() => onReply(msg)}
-            title="پاسخ به این پیام"
-            className={`absolute top-2 z-10 w-7 h-7 rounded-full flex items-center justify-center
-              text-slate-300 dark:text-slate-600
+            title="پاسخ"
+            aria-label="پاسخ"
+            className={`absolute top-1 z-20 w-8 h-8 rounded-full flex items-center justify-center
+              bg-white dark:bg-slate-800
+              border border-slate-200 dark:border-slate-700
+              shadow-sm text-slate-400 dark:text-slate-500
               hover:text-brand-600 dark:hover:text-brand-400
-              hover:bg-brand-50 dark:hover:bg-slate-800
-              opacity-0 group-hover/bubble:opacity-100 focus:opacity-100
-              transition-all duration-150 ${
-                isUser ? '-start-9' : '-end-9'
+              hover:border-brand-300 dark:hover:border-brand-700
+              active:scale-90 transition-all ${
+                isUser ? '-start-10' : '-end-10'
               }`}
           >
             <ReplyArrow className="w-4 h-4" />
@@ -311,7 +313,7 @@ export function ChatPanel({
 
       {chat.summary && <SummaryCard chatId={chat.id} summary={chat.summary} />}
 
-      <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-6">
+      <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-6">
         <div className="max-w-3xl mx-auto space-y-6">
           {messages.map((m) => (
             <MessageBubble

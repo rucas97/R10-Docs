@@ -48,6 +48,8 @@ export function ChatInput({
     }
   }, [input]);
 
+  const shouldContinueRef = useRef(false);
+
   const startListening = async () => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
@@ -55,14 +57,14 @@ export function ChatInput({
       return;
     }
 
-    // Start typing FIRST so it gets mic priority
+    shouldContinueRef.current = true;
+    finalTextRef.current = input; // preserve existing text
+
     const rec = new SR();
     rec.lang = 'fa-IR';
     rec.continuous = true;
     rec.interimResults = true;
     rec.maxAlternatives = 1;
-
-    finalTextRef.current = input; // preserve what's already typed
 
     rec.onresult = (e: any) => {
       let interim = '';
@@ -78,19 +80,22 @@ export function ChatInput({
     };
 
     rec.onerror = (e: any) => {
-      console.warn('[mic] recognition error:', e?.error);
-      if (e?.error === 'not-allowed' || e?.error === 'service-not-allowed') {
+      console.error('[mic] error:', e.error, e.message);
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
         alert('دسترسی به میکروفون داده نشد. لطفاً در تنظیمات مرورگر اجازه دهید.');
+        shouldContinueRef.current = false;
         setListening(false);
       }
+      // 'network' / 'aborted' / 'no-speech' — keep going silently
     };
 
     rec.onend = () => {
-      // Chrome stops on silence — restart if user hasn't tapped stop
-      if (recognitionRef.current && streamRef.current !== null) {
-        try { rec.start(); } catch {}
-      } else if (recognitionRef.current && listening) {
-        try { rec.start(); } catch {}
+      if (shouldContinueRef.current) {
+        try { rec.start(); } catch (err) {
+          console.warn('[mic] restart failed:', err);
+          shouldContinueRef.current = false;
+          setListening(false);
+        }
       }
     };
 
@@ -98,37 +103,34 @@ export function ChatInput({
       rec.start();
       recognitionRef.current = rec;
       setListening(true);
-      console.log('[mic] recognition started');
+      console.log('[mic] started, lang=fa-IR');
     } catch (e) {
-      console.error('[mic] rec.start failed:', e);
+      console.error('[mic] start failed:', e);
       alert('شروع ضبط ناموفق بود.');
+      shouldContinueRef.current = false;
       return;
     }
 
-    // Now try to get the audio stream for the wave visualization.
-    // If this fails, typing still works — we just lose the audio-reactive wave.
+    // Optionally get stream for wave visualisation
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       setMicStream(stream);
-      console.log('[mic] audio stream ready for wave');
     } catch (e) {
-      console.warn('[mic] getUserMedia failed — wave will use CSS fallback:', e);
-      // Set a fake stream so MicWave uses CSS animation
-      const fakeStream = new MediaStream();
-      streamRef.current = fakeStream;
+      console.warn('[mic] no audio stream for wave, using CSS fallback');
+      streamRef.current = null;
       setMicStream(null);
     }
   };
 
   const stopListening = () => {
+    shouldContinueRef.current = false;
     try { recognitionRef.current?.stop(); } catch {}
     recognitionRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     setMicStream(null);
     setListening(false);
-    finalTextRef.current = '';
   };
 
   const submit = () => {

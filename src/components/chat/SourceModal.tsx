@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { X, ChevronRight, ChevronLeft, FileText, Loader2, } from 'lucide-react';
 import { toPersianNumber, type Citation } from '@/lib/citations';
@@ -27,6 +28,8 @@ export function SourceModal({
   primaryLanguage?: 'fa' | 'en';
   onClose: () => void;
 }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const [index, setIndex] = useState(initialIndex);
   const current = citations[index];
   const page = current.page;
@@ -46,8 +49,10 @@ export function SourceModal({
     };
   }, [index, citations.length, onClose]);
 
-  return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-2 sm:p-6" dir="rtl">
+  if (!mounted) return null;
+
+  const content = (
+    <div className="fixed inset-0 flex items-center justify-center p-2 sm:p-6" style={{ zIndex: 2147483647 }} dir="rtl">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative w-full max-w-4xl h-[90dvh] sm:h-[86dvh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
@@ -118,4 +123,6 @@ export function SourceModal({
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }
