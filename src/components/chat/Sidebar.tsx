@@ -10,6 +10,7 @@ import {
   Search, FolderInput, X, FolderX,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { DocwizeLogo } from '@/components/DocwizeLogo';
 import { ProfileMenu } from './ProfileMenu';
 
 type Chat = {
@@ -441,9 +442,7 @@ export function Sidebar({
       {/* Header */}
       <div className="h-16 flex items-center px-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
         <Link href="/" className="flex items-center gap-2.5" onClick={onClose}>
-          <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-brand-700 via-brand-600 to-indigo-500 text-white flex items-center justify-center">
-            <span className="text-xs font-black">R10</span>
-          </div>
+          <DocwizeLogo className="w-9 h-9 text-gold-500" />
           <div className="flex flex-col">
             <span className="font-black text-sm text-slate-900 dark:text-white leading-tight">R10-Docs</span>
             <span className="text-[10px] text-brand-600 dark:text-brand-400 font-semibold">دستیار اسناد</span>

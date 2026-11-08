@@ -2,14 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { DocwizeLogo } from '@/components/DocwizeLogo';
 
-const DocwizeLogo = ({ className = 'w-8 h-8' }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none">
-    <path d="M4 6C4 4.895 4.895 4 6 4H8V20H6C4.895 20 4 19.105 4 18V6Z" fill="currentColor"/>
-    <path d="M10 4C10 2.895 10.895 2 12 2H14V22H12C10.895 22 10 21.105 10 20V4Z" fill="currentColor"/>
-    <path d="M16 2C16 .895 16.895 0 18 0H20C21.105 0 22 .895 22 2V22C22 23.105 21.105 24 20 24H18C16.895 24 16 23.105 16 22V2Z" fill="currentColor"/>
-  </svg>
-);
 
 export default function LandingPage() {
   const router = useRouter();
@@ -36,7 +30,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-40 glass-header border-b border-neutral-200/60 dark:border-neutral-800/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
           <button onClick={() => router.push('/')} className="flex items-center gap-3 group">
-            <DocwizeLogo className="w-8 h-8 text-brand-blue group-hover:scale-105 transition-transform" />
+            <DocwizeLogo className="w-8 h-8 text-gold-500 group-hover:scale-105 transition-transform" />
             <span className="font-black text-xl text-neutral-900 dark:text-white hidden sm:block">Docwize</span>
           </button>
 
@@ -205,7 +199,7 @@ export default function LandingPage() {
       <footer className="mt-auto border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-surface-dark py-8">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-neutral-500">
           <div className="flex items-center gap-2 font-bold text-neutral-900 dark:text-neutral-200">
-            <DocwizeLogo className="w-5 h-5 text-brand-blue" />
+            <DocwizeLogo className="w-5 h-5 text-gold-500" />
             <span>Docwize • دستیار نسل جدید تحلیل اسناد</span>
           </div>
           <div className="flex items-center gap-6 text-sm">
