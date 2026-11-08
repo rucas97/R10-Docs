@@ -58,7 +58,7 @@ export function SourceModal({
       <div className="relative w-full max-w-4xl h-[90dvh] sm:h-[86dvh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         <div className="h-14 shrink-0 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-gold-100 dark:bg-gold-900/60 text-gold-600 dark:text-gold-400 flex items-center justify-center">
               <FileText className="w-4 h-4" />
             </div>
             <div>
@@ -111,8 +111,8 @@ export function SourceModal({
                 <button key={`${c.page}-${i}`} onClick={() => setIndex(i)}
                   className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
                     i === index
-                      ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-amber-100 dark:hover:bg-amber-950/40'
+                      ? 'bg-gold-500 text-white shadow-md shadow-gold-500/30'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-gold-100 dark:hover:bg-gold-900/40'
                   }`}>
                   ص {toPersianNumber(c.page)}
                 </button>

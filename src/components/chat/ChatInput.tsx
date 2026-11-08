@@ -248,11 +248,11 @@ export function ChatInput({
         title="سوالات پیشنهادی"
         className={`w-9 h-9 rounded-2xl flex items-center justify-center transition ${
           showSuggestions
-            ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'
+            ? 'bg-gold-100 dark:bg-gold-900/60 text-gold-600 dark:text-gold-400'
             : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-700'
         }`}
       >
-        <Lightbulb className={`w-4 h-4 ${showSuggestions ? 'fill-amber-400 dark:fill-amber-500' : ''}`} />
+        <Lightbulb className={`w-4 h-4 ${showSuggestions ? 'fill-gold-400 dark:fill-gold-500' : ''}`} />
       </button>
     </div>
   );
@@ -279,7 +279,7 @@ export function ChatInput({
         type="button"
         onClick={submit}
         disabled={streaming || !input.trim()}
-        className="w-9 h-9 rounded-2xl bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white flex items-center justify-center transition disabled:opacity-40 shadow-sm relative z-10"
+        className="w-9 h-9 rounded-2xl bg-gold-500 hover:bg-gold-600 text-black flex items-center justify-center transition disabled:opacity-40 shadow-sm relative z-10"
       >
         {streaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 -scale-x-100" />}
       </button>

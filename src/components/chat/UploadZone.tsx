@@ -167,7 +167,7 @@ export function UploadZone() {
             stage === 'error'
               ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-500'
               : stage === 'summarizing'
-              ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400'
+              ? 'bg-gold-50 dark:bg-gold-900/40 text-gold-600 dark:text-gold-400'
               : 'bg-brand-50 dark:bg-brand-950 text-brand-600 dark:text-brand-400'
           }`}>
             {stage === 'uploading' && <Loader2 className="w-8 h-8 animate-spin" />}
@@ -203,7 +203,7 @@ export function UploadZone() {
                 <div
                   className={`h-full transition-all duration-300 ${
                     stage === 'summarizing'
-                      ? 'bg-gradient-to-l from-amber-500 to-amber-400'
+                      ? 'bg-gradient-to-l from-gold-500 to-gold-400'
                       : 'bg-gradient-to-l from-brand-500 to-indigo-500'
                   }`}
                   style={{ width: `${progress}%` }}

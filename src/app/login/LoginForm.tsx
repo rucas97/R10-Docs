@@ -1,123 +1,246 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { Sparkles, Loader2, ArrowRight, AlertCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
+const DocwizeLogo = ({ className = 'w-8 h-8' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none">
+    <path d="M4 6C4 4.895 4.895 4 6 4H8V20H6C4.895 20 4 19.105 4 18V6Z" fill="currentColor"/>
+    <path d="M10 4C10 2.895 10.895 2 12 2H14V22H12C10.895 22 10 21.105 10 20V4Z" fill="currentColor"/>
+    <path d="M16 2C16 .895 16.895 0 18 0H20C21.105 0 22 .895 22 2V22C22 23.105 21.105 24 20 24H18C16.895 24 16 23.105 16 22V2Z" fill="currentColor"/>
+  </svg>
+);
+
 export function LoginForm() {
-  const params = useSearchParams();
-  const errorParam = params.get('error');
+  const router = useRouter();
+  const supabase = createClient();
+
+  const [step, setStep] = useState<'phone' | 'otp'>('phone');
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(errorParam ?? null);
+  const [error, setError] = useState<string | null>(null);
+  const [timer, setTimer] = useState(0);
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (timer <= 0) return;
+    const id = setInterval(() => setTimer((t) => t - 1), 1000);
+    return () => clearInterval(id);
+  }, [timer]);
+
+  const formatPhone = (p: string) => {
+    const clean = p.replace(/\D/g, '');
+    if (clean.startsWith('98')) return '+' + clean;
+    if (clean.startsWith('0')) return '+98' + clean.slice(1);
+    return '+98' + clean;
+  };
+
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const clean = phone.replace(/\D/g, '');
+    if (clean.length < 10) {
+      setError('شماره موبایل معتبر وارد کنید.');
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({ phone: formatPhone(phone) });
+    setLoading(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setStep('otp');
+    setTimer(120);
+    setTimeout(() => otpRefs.current[0]?.focus(), 300);
+  };
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+    const next = [...otp];
+    next[index] = value.slice(-1);
+    setOtp(next);
+    if (value && index < 5) otpRefs.current[index + 1]?.focus();
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const code = otp.join('');
+    if (code.length !== 6) {
+      setError('کد ۶ رقمی را کامل وارد کنید.');
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.verifyOtp({
+      phone: formatPhone(phone),
+      token: code,
+      type: 'sms',
+    });
+    setLoading(false);
+    if (error) { setError(error.message); return; }
+    router.push('/chat');
+  };
 
   const signInWithGoogle = async () => {
     setLoading(true);
     setError(null);
-    const supabase = createClient();
-
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: window.location.origin + '/auth/callback',
-        scopes: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
-        queryParams: { prompt: 'select_account' },
-      },
+      options: { redirectTo: window.location.origin + '/auth/callback' },
     });
-
-    if (oauthError) {
-      console.error('OAuth error:', oauthError);
-      setError(oauthError.message);
-      setLoading(false);
-    }
+    if (error) { setError(error.message); setLoading(false); }
   };
-
-  const friendly = (raw: string | null) => {
-    if (!raw) return null;
-    if (raw === 'no_code') return 'پاسخ گوگل ناقص بود. لطفاً دوباره تلاش کنید.';
-    if (raw === 'auth_failed') return 'ورود ناموفق بود. لطفاً دوباره تلاش کنید.';
-    if (raw.toLowerCase().includes('unable to exchange')) {
-      return 'تنظیمات ورود به گوگل نادرست است. لطفاً با پشتیبانی تماس بگیرید.';
-    }
-    return raw;
-  };
-
-  const shownError = friendly(error);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-slate-50 dark:bg-slate-950">
-      <div className="w-full max-w-md">
-        <Link href="/" className="flex items-center justify-center gap-3 mb-8 group">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-700 via-brand-600 to-indigo-500 text-white flex items-center justify-center shadow-md shadow-brand-500/25 group-hover:scale-105 transition-transform">
-            <Sparkles className="w-6 h-6" />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-black text-lg text-slate-900 dark:text-white tracking-tight">R10-Docs</span>
-            <span className="text-xs text-brand-600 dark:text-brand-400 font-semibold">دستیار هوشمند خوانش اسناد</span>
-          </div>
-        </Link>
+    <div className="min-h-[100dvh] bg-surface-canvasDark text-neutral-100 flex flex-col lg:flex-row">
 
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xl p-8 sm:p-10">
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white text-center mb-2">خوش آمدید</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-8">
-            برای ذخیره سوابق گفتگو و اسناد خود، با حساب گوگل وارد شوید.
+      {/* Left: Branding */}
+      <div className="hidden lg:flex lg:w-1/2 relative bg-[#0A0A0A] border-l border-neutral-800/50 flex-col items-center justify-center overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gold-500/10 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-brand-cobalt/10 rounded-full blur-[100px] pointer-events-none" />
+        <div className="relative z-10 flex flex-col items-center text-center px-12">
+          <DocwizeLogo className="w-20 h-20 text-gold-500 mb-8 drop-shadow-[0_0_15px_rgba(255,178,0,0.3)]" />
+          <h1 className="text-3xl font-black text-white mb-4">به Docwize خوش آمدید</h1>
+          <p className="text-neutral-400 text-sm leading-relaxed max-w-sm">
+            دستیار هوشمند تحلیل اسناد. با هر فایل PDF گفتگو کنید و در کسری از ثانیه به پاسخ‌های دقیق برسید.
           </p>
+        </div>
+      </div>
 
-          {shownError && (
-            <div className="mb-5 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs text-rose-700 dark:text-rose-300 flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span dir="auto" className="break-all">{shownError}</span>
-            </div>
-          )}
-
-          <button
-            onClick={signInWithGoogle}
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-3 px-5 py-4 rounded-2xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-brand-400 dark:hover:border-brand-500 hover:bg-brand-50/50 dark:hover:bg-slate-800/80 text-slate-800 dark:text-slate-100 font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>در حال اتصال به گوگل...</span>
-              </>
-            ) : (
-              <>
-                <GoogleIcon />
-                <span>ورود با حساب گوگل</span>
-                <ArrowRight className="w-4 h-4 opacity-50" />
-              </>
-            )}
-          </button>
-
-          <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center leading-relaxed">
-              با ورود، شما با{' '}
-              <a href="#" className="text-brand-600 dark:text-brand-400 hover:underline">شرایط و قوانین</a>{' '}
-              و{' '}
-              <a href="#" className="text-brand-600 dark:text-brand-400 hover:underline">سیاست حریم خصوصی</a>{' '}
-              موافقت می‌کنید.
-            </p>
-          </div>
+      {/* Right: Form */}
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-8 flex-1">
+        <div className="flex items-center gap-2 mb-6 lg:hidden">
+          <DocwizeLogo className="w-7 h-7 text-gold-500" />
+          <span className="font-black text-lg text-white">Docwize</span>
         </div>
 
-        <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-6">
-          <Link href="/" className="hover:text-brand-600 dark:hover:text-brand-400 transition">
-            ← بازگشت به صفحه اصلی
-          </Link>
-        </p>
+        <div className="w-full max-w-sm bg-surface-aiBubbleDark border border-neutral-800 rounded-3xl p-5 sm:p-6 shadow-2xl">
+          {step === 'phone' ? (
+            <>
+              <h2 className="text-xl font-bold text-white mb-1">ورود یا ثبت‌نام</h2>
+              <p className="text-xs text-neutral-400 mb-6">برای دسترسی به اسناد خود وارد شوید.</p>
+
+              {error && (
+                <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleSendOtp}>
+                <label className="block text-xs font-medium text-neutral-400 mb-2">شماره موبایل</label>
+                <div className="relative flex items-center bg-surface-inputDark border border-neutral-700 rounded-xl focus-within:border-neutral-500 overflow-hidden mb-4" dir="ltr">
+                  <div className="flex items-center justify-center px-3 border-r border-neutral-700 bg-neutral-800/30 h-11">
+                    <span className="text-neutral-400 text-sm font-medium">+98</span>
+                  </div>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="9123456789"
+                    maxLength={11}
+                    dir="ltr"
+                    required
+                    className="w-full bg-transparent text-white text-left outline-none px-3 text-sm placeholder:text-neutral-600"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-gold-500 hover:bg-gold-600 text-black font-bold text-sm rounded-xl py-2.5 transition active:scale-[0.98] disabled:opacity-50"
+                >
+                  {loading ? 'در حال ارسال...' : 'دریافت کد ورود'}
+                </button>
+              </form>
+
+              <div className="relative flex items-center justify-center my-5">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-neutral-800" /></div>
+                <div className="relative bg-surface-aiBubbleDark px-3 text-[10px] text-neutral-500">یا</div>
+              </div>
+
+              <button
+                onClick={signInWithGoogle}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 bg-surface-inputDark border border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800 text-white text-sm font-medium rounded-xl px-4 py-2.5 transition"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                ورود با حساب گوگل
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setStep('phone')}
+                className="mb-4 flex items-center gap-1 text-xs text-neutral-400 hover:text-white transition"
+              >
+                ← ویرایش شماره
+              </button>
+
+              <p className="text-sm text-neutral-400 mb-5 leading-relaxed">
+                کد ۶ رقمی ارسال‌شده به <span className="font-bold text-white" dir="ltr">{phone}</span> را وارد کنید.
+              </p>
+
+              {error && (
+                <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleVerifyOtp}>
+                <div className="flex justify-between gap-2 mb-6" dir="ltr">
+                  {otp.map((digit, i) => (
+                    <input
+                      key={i}
+                      ref={(el) => { otpRefs.current[i] = el; }}
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(i, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                      className="w-11 h-12 bg-surface-inputDark border border-neutral-700 text-white text-center text-lg font-bold rounded-lg outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition"
+                    />
+                  ))}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-gold-500 hover:bg-gold-600 text-black font-bold text-sm rounded-xl py-2.5 transition active:scale-[0.98] mb-4 disabled:opacity-50"
+                >
+                  {loading ? 'در حال تایید...' : 'تایید و ورود'}
+                </button>
+
+                <div className="text-center text-[11px] text-neutral-500">
+                  {timer > 0
+                    ? <>ارسال مجدد تا <span className="text-gold-500 font-bold" dir="ltr">۰{Math.floor(timer / 60)}:{String(timer % 60).padStart(2, '0')}</span></>
+                    : <button type="button" onClick={handleSendOtp} className="text-gold-500 hover:underline">ارسال مجدد کد</button>
+                  }
+                </div>
+              </form>
+            </>
+          )}
+
+          <div className="mt-4 pt-3 border-t border-neutral-800/50 text-center text-[10px] text-neutral-500 leading-relaxed">
+            با ورود به Docwize، <a href="#" className="text-neutral-300 hover:text-gold-500">شرایط و قوانین</a> و <a href="#" className="text-neutral-300 hover:text-gold-500">حریم خصوصی</a> ما را می‌پذیرید.
+          </div>
+        </div>
       </div>
     </div>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-    </svg>
   );
 }

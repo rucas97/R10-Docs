@@ -226,7 +226,7 @@ export function Sidebar({
             onClick={() => handlePin(chat)}
             className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-brand-50 dark:hover:bg-slate-800 transition"
           >
-            {chat.is_pinned ? <PinOff className="w-3.5 h-3.5 text-amber-500" /> : <Pin className="w-3.5 h-3.5 text-amber-500" />}
+            {chat.is_pinned ? <PinOff className="w-3.5 h-3.5 text-gold-500" /> : <Pin className="w-3.5 h-3.5 text-gold-500" />}
             <span>{chat.is_pinned ? 'برداشتن پین' : 'پین کردن'}</span>
           </button>
           <button
@@ -401,7 +401,7 @@ export function Sidebar({
           }`}
         >
           {c.is_pinned ? (
-            <Pin className="w-3.5 h-3.5 shrink-0 text-amber-500 fill-amber-500" />
+            <Pin className="w-3.5 h-3.5 shrink-0 text-gold-500 fill-gold-500" />
           ) : (
             <MessageSquare className="w-4 h-4 shrink-0" />
           )}
@@ -456,7 +456,7 @@ export function Sidebar({
         <Link
           href="/chat"
           onClick={onClose}
-          className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white text-sm font-bold transition shadow-md shadow-brand-500/20"
+          className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-2xl bg-gold-500 hover:bg-gold-600 text-black text-sm font-bold transition shadow-sm shadow-gold-500/20 active:scale-95"
         >
           <Plus className="w-4 h-4" />
           <span>گفتگوی جدید</span>
@@ -525,7 +525,7 @@ export function Sidebar({
               <>
                 {pinned.length > 0 && (
                   <>
-                    <p className="text-[10px] font-black text-amber-600 dark:text-amber-400 px-3 pt-3 pb-1 flex items-center gap-1.5">
+                    <p className="text-[10px] font-black text-gold-600 dark:text-gold-400 px-3 pt-3 pb-1 flex items-center gap-1.5">
                       <Pin className="w-3 h-3 fill-current" />
                       پین‌شده‌ها ({pinned.length}/۴)
                     </p>

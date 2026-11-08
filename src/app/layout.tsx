@@ -9,9 +9,8 @@ const vazirmatn = Vazirmatn({
 });
 
 export const metadata: Metadata = {
-  title: "R10-Docs | گفتگو با اسناد PDF با هوش مصنوعی",
-  description:
-    "به جای صرف ساعت‌ها زمان برای خواندن مقاله‌ها و گزارش‌های طولانی، سوالاتتان را بپرسید و پاسخ دقیق با ذکر شماره صفحه دریافت کنید.",
+  title: "Docwize | دستیار هوشمند اسناد",
+  description: "با هر سند PDF گفتگو کنید. دستیار هوشمند تحلیل اسناد با پشتیبانی کامل فارسی.",
 };
 
 export const viewport: Viewport = {

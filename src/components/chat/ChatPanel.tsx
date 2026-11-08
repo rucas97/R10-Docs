@@ -127,12 +127,12 @@ const MessageBubble = memo(function MessageBubble({
               </div>
               {parsed.citations.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-slate-200/80 dark:border-slate-700/80 flex items-center flex-wrap gap-1.5">
-                  <span className="text-[10px] font-black text-amber-700 dark:text-amber-400">منابع:</span>
+                  <span className="text-[10px] font-black text-gold-700 dark:text-gold-400">منابع:</span>
                   {parsed.citations.map((c, i) => (
                     <button
                       key={`${c.page}-${i}`}
                       onClick={() => onOpenSource(parsed.citations, i)}
-                      className="text-[11px] px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-950/60 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 font-bold transition"
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-gold-50 hover:bg-gold-100 dark:bg-gold-900/40 dark:hover:bg-gold-900/60 border border-gold-200 dark:border-gold-900 text-gold-700 dark:text-amber-300 font-bold transition"
                     >
                       ص {toPersianNumber(c.page)}
                     </button>

@@ -22,7 +22,7 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
       onClick={toggle}
       title={isDark ? 'حالت روشن' : 'حالت تاریک'}
       aria-label="تغییر تم"
-      className={`w-9 h-9 rounded-xl flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-amber-400 border border-slate-200 dark:border-slate-700 transition active:scale-90 ${className}`}
+      className={`w-9 h-9 rounded-xl flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-gold-400 border border-slate-200 dark:border-slate-700 transition active:scale-90 ${className}`}
     >
       {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
     </button>

@@ -2,20 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, X, RefreshCw, Loader2, AlertCircle, Copy, Check } from 'lucide-react';
+import { Sparkles, X, RefreshCw, Loader2, Copy, Check } from 'lucide-react';
 
-export function SummaryCard({
-  chatId,
-  summary,
-}: {
-  chatId: string;
-  summary: string;
-}) {
+export function SummaryCard({ chatId, summary }: { chatId: string; summary: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(true);
   const [text, setText] = useState(summary);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const hasSummary = text && text.length >= 20;
@@ -25,105 +18,82 @@ export function SummaryCard({
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      alert('کپی ناموفق بود');
-    }
+    } catch {}
   };
 
   const regenerate = async () => {
     setLoading(true);
-    setError(null);
     try {
       const res = await fetch('/api/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chatId }),
       });
-      if (!res.ok) throw new Error('ناموفق');
       const data = await res.json();
-      if (!data.summary) throw new Error('خلاصه خالی');
-      setText(data.summary);
-      router.refresh();
-    } catch {
-      setError('خلاصه‌سازی ناموفق بود.');
-    } finally {
-      setLoading(false);
-    }
+      if (data.summary) { setText(data.summary); router.refresh(); }
+    } catch {}
+    setLoading(false);
   };
 
   if (!open) {
     return (
       <button
         onClick={() => setOpen(true)}
-        title="نمایش خلاصه سند"
-        className="self-end me-4 mt-2 z-10 inline-flex items-center gap-2 px-3 py-1.5 rounded-full
-          bg-gradient-to-l from-brand-500 to-indigo-500 hover:from-brand-600 hover:to-indigo-600
-          text-white text-[11px] font-black shadow-md shadow-brand-500/30
-          active:scale-95 transition-all"
+        className="self-end me-4 mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gold-500 hover:bg-gold-600 text-black text-[11px] font-black shadow-md shadow-gold-500/30 active:scale-95 transition"
       >
         <Sparkles className="w-3.5 h-3.5" />
-        <span>خلاصه سند</span>
+        خلاصه سند
       </button>
     );
   }
 
   return (
-    <div className="mx-4 mt-4 p-4 rounded-2xl bg-gradient-to-l from-brand-50 to-indigo-50 dark:from-brand-950/40 dark:to-indigo-950/40 border border-brand-100 dark:border-brand-900 relative shrink-0">
+    <div className="mx-3 xl:mx-6 mt-3 xl:mt-4 p-4 rounded-2xl bg-white dark:bg-surface-aiBubbleDark border border-neutral-200 dark:border-neutral-800 relative shadow-sm">
       <button
         onClick={() => setOpen(false)}
-        className="absolute top-2 left-2 w-7 h-7 rounded-lg flex items-center justify-center text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/50 active:scale-90 transition"
+        className="absolute top-2 left-2 w-7 h-7 rounded-lg flex items-center justify-center text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
         aria-label="بستن"
-        title="جمع کردن خلاصه"
       >
         <X className="w-4 h-4" />
       </button>
 
-      <div className="flex items-start gap-2.5">
-        <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-3">
+        <Sparkles className="w-5 h-5 text-gold-500 shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-black text-brand-700 dark:text-brand-300 mb-2">خلاصه سند</p>
+          <p className="text-xs font-black text-neutral-900 dark:text-white mb-1.5">خلاصه سند</p>
 
           {loading ? (
-            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 py-1">
+            <div className="flex items-center gap-2 text-xs text-neutral-500 py-1">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span>در حال تولید خلاصه...</span>
+              در حال تولید خلاصه...
             </div>
           ) : hasSummary ? (
-            <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-200">{text}</p>
+            <p className="text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">{text}</p>
           ) : (
-            <p className="text-xs text-slate-500 dark:text-slate-400 py-1">خلاصه‌ای موجود نیست.</p>
+            <p className="text-xs text-neutral-500 py-1">خلاصه‌ای موجود نیست.</p>
           )}
 
-          {error && (
-            <div className="mt-2 flex items-center gap-1.5 text-[10px] text-rose-600 dark:text-rose-400">
-              <AlertCircle className="w-3 h-3" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Bottom action row */}
-          <div className="mt-3 pt-3 border-t border-brand-100 dark:border-brand-900 flex items-center gap-2">
+          <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800 flex items-center gap-2">
             {hasSummary && (
               <button
                 onClick={handleCopy}
-                className={`h-8 px-3 rounded-xl flex items-center gap-1.5 text-[11px] font-bold transition active:scale-95 ${
+                className={`h-7 px-2.5 rounded-lg text-[10px] font-bold flex items-center gap-1 transition ${
                   copied
-                    ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400'
-                    : 'bg-white/80 dark:bg-slate-800/80 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800 hover:bg-brand-100 dark:hover:bg-slate-700'
+                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30'
+                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-gold-500 hover:text-black border border-transparent'
                 }`}
               >
-                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copied ? 'کپی شد' : 'کپی'}</span>
+                {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                {copied ? 'کپی شد' : 'کپی'}
               </button>
             )}
-
             <button
               onClick={regenerate}
               disabled={loading}
-              className="h-8 px-3 rounded-xl flex items-center gap-1.5 text-[11px] font-bold bg-white/80 dark:bg-slate-800/80 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800 hover:bg-brand-100 dark:hover:bg-slate-700 active:scale-95 transition disabled:opacity-50"
+              className="h-7 px-2.5 rounded-lg text-[10px] font-bold bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-gold-500 hover:text-black transition border border-transparent flex items-center gap-1 disabled:opacity-50"
             >
-              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-              <span>{hasSummary ? 'بازتولید' : 'تولید خلاصه'}</span>
+              {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+              بازتولید
             </button>
           </div>
         </div>
