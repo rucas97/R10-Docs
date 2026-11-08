@@ -3,14 +3,21 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DocwizeLogo } from '@/components/DocwizeLogo';
+import { createClient } from '@/lib/supabase/client';
+import { User as UserIcon } from 'lucide-react';
 
 
 export default function LandingPage() {
   const router = useRouter();
   const [isDark, setIsDark] = useState(false);
+  const [user, setUser] = useState<{ email: string } | null>(null);
 
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains('dark'));
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.email) setUser({ email: data.user.email });
+    });
   }, []);
 
   const toggleTheme = () => {
@@ -49,12 +56,27 @@ export default function LandingPage() {
             >
               {isDark ? '☀' : '☾'}
             </button>
-            <button
-              onClick={goLogin}
-              className="hidden sm:inline-flex text-sm font-bold px-4 py-2.5 rounded-xl text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-            >
-              ورود به پنل
-            </button>
+            {!user ? (
+              <button
+                onClick={goLogin}
+                className="hidden sm:inline-flex text-sm font-bold px-4 py-2.5 rounded-xl text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+              >
+                ورود به پنل
+              </button>
+            ) : (
+              <button
+                onClick={goChat}
+                title={user.email}
+                className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-brand-cobaltLight dark:bg-brand-cobalt/20 border border-brand-cobalt/20 hover:bg-brand-cobalt hover:text-white transition group"
+              >
+                <div className="w-7 h-7 rounded-full bg-brand-cobalt text-white flex items-center justify-center text-xs font-black group-hover:bg-white group-hover:text-brand-cobalt transition">
+                  {user.email[0].toUpperCase()}
+                </div>
+                <span className="text-xs font-bold text-brand-cobalt dark:text-brand-cobalt max-w-[120px] truncate group-hover:text-white transition">
+                  پنل کاربری
+                </span>
+              </button>
+            )}
             <button
               onClick={goChat}
               className="text-xs md:text-sm font-bold px-4 sm:px-6 py-2.5 rounded-xl bg-gold-500 hover:bg-gold-600 text-black shadow-sm shadow-gold-500/20 active:scale-95 transition-all"

@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Menu, Sparkles } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import Link from 'next/link';
 import { Sidebar } from './Sidebar';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { DocwizeLogo } from '@/components/DocwizeLogo';
 
 type Chat = {
   id: string;
@@ -27,12 +28,22 @@ export function AppShell({
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
+    <div className="flex h-[100dvh] overflow-hidden bg-surface-lightMuted dark:bg-surface-dark">
+      
+      {/* Mobile Sidebar Overlay */}
+      {drawerOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={() => setDrawerOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
       <aside
         className={`
-          fixed inset-y-0 right-0 z-40 w-72 bg-white dark:bg-slate-900
-          border-l border-slate-200 dark:border-slate-800
-          transform transition-transform duration-200 ease-out
+          fixed inset-y-0 right-0 z-40 w-72 bg-white dark:bg-surface-card
+          border-l border-neutral-200 dark:border-neutral-800
+          transform transition-transform duration-300 ease-out
           lg:relative lg:translate-x-0
           ${drawerOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
         `}
@@ -40,34 +51,31 @@ export function AppShell({
         <Sidebar user={user} chats={chats} folders={folders} onClose={() => setDrawerOpen(false)} />
       </aside>
 
-      {drawerOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
-          onClick={() => setDrawerOpen(false)}
-        />
-      )}
-
+      {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* Top bar — mobile menu + theme toggle (visible everywhere) */}
-        <div className="lg:hidden h-14 flex items-center justify-between px-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+        
+        {/* Mobile Topbar */}
+        <div className="lg:hidden h-14 flex items-center justify-between px-3 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-surface-card shrink-0">
           <button
             onClick={() => setDrawerOpen(true)}
-            className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 transition"
             aria-label="باز کردن منو"
           >
-            <Menu className="w-5 h-5 text-slate-700 dark:text-slate-200" />
+            <Menu className="w-5 h-5" />
           </button>
+
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-700 via-brand-600 to-indigo-500 text-white flex items-center justify-center">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <span className="font-black text-sm text-slate-900 dark:text-white">R10-Docs</span>
+            <DocwizeLogo className="w-7 h-7 text-gold-500" />
+            <span className="font-black text-sm text-neutral-900 dark:text-white">Docwize</span>
           </Link>
-          <ThemeToggle />
+          
+          <div className="w-10 flex justify-end">
+            <ThemeToggle />
+          </div>
         </div>
 
-        {/* Desktop top bar — theme toggle only (sidebar has the rest) */}
-        <div className="hidden lg:flex h-12 items-center justify-end px-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+        {/* Desktop Topbar (just theme toggle) */}
+        <div className="hidden lg:flex h-14 items-center justify-end px-4 border-b border-neutral-200 dark:border-neutral-800 bg-white/50 dark:bg-surface-card/50 shrink-0">
           <ThemeToggle />
         </div>
 
