@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DocwizeLogo } from '@/components/DocwizeLogo';
+import { User as UserIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 export default function LandingPage() {
@@ -54,10 +55,10 @@ export default function LandingPage() {
             <a href="#faq" className="hover:text-neutral-900 dark:hover:text-white transition">سوالات متداول</a>
           </nav>
 
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={toggleTheme}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 transition active:scale-95"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 transition active:scale-95 shrink-0"
             >
               {isDark ? '☀' : '☾'}
             </button>
@@ -65,20 +66,21 @@ export default function LandingPage() {
             {!user ? (
               <button
                 onClick={goLogin}
-                className="hidden sm:inline-flex text-sm font-bold px-4 py-2.5 rounded-xl text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+                className="flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto sm:px-4 sm:py-2.5 rounded-xl text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition shrink-0"
               >
-                ورود به پنل
+                <span className="hidden sm:inline text-sm font-bold">ورود به پنل</span>
+                <UserIcon className="w-4 h-4 sm:hidden" />
               </button>
             ) : (
               <button
                 onClick={goChat}
                 title={user.email}
-                className="hidden sm:flex items-center gap-2 px-1.5 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition"
+                className="flex items-center justify-center gap-2 sm:px-1.5 sm:py-1.5 rounded-full sm:rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition shrink-0"
               >
-                <div className="w-7 h-7 rounded-full bg-brand-cobalt text-white flex items-center justify-center text-xs font-black">
+                <div className="w-9 h-9 sm:w-7 sm:h-7 rounded-full bg-brand-cobalt text-white flex items-center justify-center text-xs font-black">
                   {user.email[0].toUpperCase()}
                 </div>
-                <span className="text-xs font-bold text-neutral-700 dark:text-neutral-200 max-w-[120px] truncate pr-2">
+                <span className="hidden sm:inline text-xs font-bold text-neutral-700 dark:text-neutral-200 max-w-[120px] truncate pr-2">
                   پنل کاربری
                 </span>
               </button>
@@ -86,7 +88,7 @@ export default function LandingPage() {
 
             <button
               onClick={goChat}
-              className="text-xs md:text-sm font-bold px-4 sm:px-5 py-2.5 rounded-xl bg-gold-500 hover:bg-gold-600 text-black shadow-sm shadow-gold-500/20 active:scale-95 transition-all"
+              className="text-xs md:text-sm font-bold px-3 sm:px-5 py-2.5 rounded-xl bg-gold-500 hover:bg-gold-600 text-black shadow-sm shadow-gold-500/20 active:scale-95 transition-all shrink-0"
             >
               <span className="hidden sm:inline">آپلود فایل رایگان</span>
               <span className="sm:hidden">آپلود</span>
