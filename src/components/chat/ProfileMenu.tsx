@@ -2,13 +2,14 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Settings, LogOut, User, Loader2 } from 'lucide-react';
+import { Settings, LogOut, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
-export function ProfileMenu({ email }: { email: string }) {
+export function ProfileMenu({ email, avatarUrl }: { email: string; avatarUrl?: string | null }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,45 +28,52 @@ export function ProfileMenu({ email }: { email: string }) {
     router.refresh();
   };
 
+  const showImage = avatarUrl && !imgError;
+
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
         title={email}
-        className="w-8 h-8 rounded-full bg-brand-cobalt text-white flex items-center justify-center text-xs font-black hover:opacity-90 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+        className="w-8 h-8 rounded-full bg-brand-cobalt text-white flex items-center justify-center text-xs font-black hover:opacity-90 transition overflow-hidden shrink-0"
       >
-        {(email[0] ?? '?').toUpperCase()}
+        {showImage ? (
+          <img 
+            src={avatarUrl!} 
+            alt="Profile" 
+            className="w-full h-full object-cover" 
+            onError={() => setImgError(true)} 
+          />
+        ) : (
+          (email[0] ?? '?').toUpperCase()
+        )}
       </button>
 
       {open && (
-        <div className="absolute bottom-10 start-0 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-[60]">
-          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-0.5">حساب کاربری</p>
-            <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate" dir="ltr">
-              {email}
-            </p>
+        <div className="absolute top-10 left-0 w-56 bg-white dark:bg-surface-aiBubbleDark border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-2xl overflow-hidden z-[9999]">
+          <div className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-brand-cobalt text-white flex items-center justify-center text-sm font-black overflow-hidden shrink-0">
+              {showImage ? (
+                <img src={avatarUrl!} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                (email[0] ?? '?').toUpperCase()
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mb-0.5">حساب کاربری</p>
+              <p className="text-xs font-bold text-neutral-800 dark:text-neutral-200 truncate" dir="ltr">{email}</p>
+            </div>
           </div>
 
           <button
-            onClick={() => { setOpen(false); alert('تنظیمات به‌زودی'); }}
-            className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
-          >
-            <User className="w-3.5 h-3.5" />
-            <span>پروفایل</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setOpen(false);
-              window.dispatchEvent(new CustomEvent('r10_open_settings'));
-            }}
-            className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+            onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('r10_open_settings')); }}
+            className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition"
           >
             <Settings className="w-3.5 h-3.5" />
             <span>تنظیمات</span>
           </button>
 
-          <div className="border-t border-slate-100 dark:border-slate-800" />
+          <div className="border-t border-neutral-100 dark:border-neutral-800" />
 
           <button
             onClick={signOut}

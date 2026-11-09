@@ -36,18 +36,29 @@ export default function PdfViewerInner({
     hash.set('zoom', `${zoom}`);
 
     if (highlightSnippet && highlightSnippet.trim().length > 3) {
-      // Extract the longest, most distinct words to force a highlight
-      const words = highlightSnippet
+      // 1. Try to extract the exact quote inside «...» if the LLM provided one
+      const quoteMatch = highlightSnippet.match(/[«"]([^»"]+)[»"]/);
+      let searchTarget = quoteMatch ? quoteMatch[1] : highlightSnippet;
+      
+      // 2. Clean up the target string
+      searchTarget = searchTarget
         .replace(/[«»""„"'`\-\.,:;()\[\]{}]/g, ' ')
         .replace(/[\u200C\u200D\u200E\u200F]/g, ' ')
-        .split(/\s+/)
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      // 3. Split into words and pick the longest ones (most unique)
+      const words = searchTarget.split(' ')
         .filter(w => w.length >= 3)
         .sort((a, b) => b.length - a.length)
-        .slice(0, 4);
+        .slice(0, 5);
       
       if (words.length > 0) {
-        hash.set('search', words.join(' '));
-        // No phrase=true, so PDF.js highlights each distinct word
+        // Use the original order of words to improve highlighting chance
+        const orderedWords = searchTarget.split(' ')
+          .filter(w => words.includes(w))
+          .join(' ');
+        hash.set('search', orderedWords);
       }
     }
 

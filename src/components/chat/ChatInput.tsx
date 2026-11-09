@@ -64,12 +64,12 @@ export function ChatInput({ onSend, streaming, onAnalyze, suggestions, replyTo, 
         
         {/* Floating Suggestions (Absolute to prevent pushing content down) */}
         {showSuggestions && (
-          <div className="absolute bottom-full left-3 right-3 xl:left-6 xl:right-6 mb-2 max-w-3xl mx-auto flex flex-col gap-2 z-40">
+          <div className="absolute bottom-[calc(100%+8px)] left-3 right-3 xl:left-6 xl:right-6 max-w-3xl mx-auto flex flex-col gap-2 z-50">
             {items.map((s: string) => (
               <button 
                 key={s} 
                 onClick={() => { onSend(s); setShowSuggestions(false); }} 
-                className="text-right text-xs px-4 py-3 rounded-2xl bg-white dark:bg-surface-aiBubbleDark border border-neutral-200 dark:border-neutral-700 shadow-xl hover:border-gold-500 transition"
+                className="text-right text-xs px-4 py-3 rounded-2xl bg-white dark:bg-surface-aiBubbleDark border border-neutral-200 dark:border-neutral-700 shadow-2xl hover:border-gold-500 transition backdrop-blur-sm"
               >
                 {s}
               </button>
@@ -87,12 +87,10 @@ export function ChatInput({ onSend, streaming, onAnalyze, suggestions, replyTo, 
         <div className="rounded-3xl border border-neutral-500 dark:border-neutral-400 bg-white dark:bg-surface-inputDark p-2 focus-within:border-brand-cobalt focus-within:ring-2 focus-within:ring-brand-cobalt/20 transition">
           <textarea ref={textareaRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }} rows={1} placeholder="سوالی درباره این سند بپرسید..." disabled={streaming} className="w-full resize-none bg-transparent outline-none px-3 py-2 text-sm text-neutral-800 dark:text-neutral-100 placeholder:text-neutral-400 max-h-32 min-h-[44px]" />
           <div className="flex items-center justify-between pt-1 px-1">
-            {/* FIXED: Reversed logic for RTL layout */}
-            {isLeft ? (
-              <>{actionsLeft}{actionsRight}</>
-            ) : (
-              <>{actionsRight}{actionsLeft}</>
-            )}
+            <div className={`flex w-full items-center justify-between ${isLeft ? 'flex-row-reverse' : ''}`}>
+              {actionsLeft}
+              {actionsRight}
+            </div>
           </div>
         </div>
         <p className="text-center text-[10px] text-neutral-400 dark:text-neutral-500 mt-2 font-medium">Docwize ممکن است اشتباه کند. لطفاً اطلاعات مهم را بررسی کنید.</p>
