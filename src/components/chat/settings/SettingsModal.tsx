@@ -44,17 +44,17 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         </div>
         <div className="p-5">
           <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
-            <Send className="w-3.5 h-3.5 text-brand-600" />
+            <Send className="w-3.5 h-3.5 text-brand-cobalt" />
             محل دکمه ارسال
           </p>
           <div className="grid grid-cols-2 gap-2">
             <button onClick={() => update({ sendSide: 'left' })}
-              className={`px-4 py-3 rounded-2xl border-2 text-xs font-bold transition flex items-center justify-center gap-2 ${local.sendSide === 'left' ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-300' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}>
+              className={`px-4 py-3 rounded-2xl border-2 text-xs font-bold transition flex items-center justify-center gap-2 ${local.sendSide === 'left' ? 'border-brand-500 bg-neutral-100 dark:bg-brand-950/40 text-brand-700 dark:text-brand-300' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}>
               {local.sendSide === 'left' && <Check className="w-3.5 h-3.5" />}
               <span>چپ</span>
             </button>
             <button onClick={() => update({ sendSide: 'right' })}
-              className={`px-4 py-3 rounded-2xl border-2 text-xs font-bold transition flex items-center justify-center gap-2 ${local.sendSide === 'right' ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-300' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}>
+              className={`px-4 py-3 rounded-2xl border-2 text-xs font-bold transition flex items-center justify-center gap-2 ${local.sendSide === 'right' ? 'border-brand-500 bg-neutral-100 dark:bg-brand-950/40 text-brand-700 dark:text-brand-300' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}>
               {local.sendSide === 'right' && <Check className="w-3.5 h-3.5" />}
               <span>راست</span>
             </button>

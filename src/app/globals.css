@@ -3,76 +3,40 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
-  /* Brand scale — REMAPPED from purple to Cobalt blue */
-  --color-brand-50:  #EFF6FF;
-  --color-brand-100: #DBEAFE;
-  --color-brand-200: #BFDBFE;
-  --color-brand-300: #93C5FD;
-  --color-brand-400: #60A5FA;
-  --color-brand-500: #3B82F6;
-  --color-brand-600: #1E3A8A;
-  --color-brand-700: #172D6B;
-  --color-brand-800: #0F1E4A;
-  --color-brand-900: #0A1533;
-  --color-brand-950: #05101F;
-
-  /* Cobalt aliases (used by Docwize components) */
-  --color-brand-cobalt:      #1E3A8A;
+  /* Brand Colors (Docwize) */
+  --color-brand-blue: #3B82F6;
+  --color-brand-cobalt: #1E3A8A;
   --color-brand-cobaltHover: #172D6B;
   --color-brand-cobaltLight: #EFF6FF;
-  --color-brand-blue:        #3B82F6;
-  --color-brand-blueDark:    #2563EB;
-
-  /* Gold accent */
-  --color-gold-50:  #FFFBEB;
+  
+  /* Gold */
+  --color-gold-50: #FFFBEB;
   --color-gold-100: #FEF3C7;
   --color-gold-200: #FDE68A;
-  --color-gold-300: #FCD34D;
   --color-gold-400: #FBBF24;
   --color-gold-500: #FFB200;
   --color-gold-600: #E69B00;
-  --color-gold-700: #B45309;
-  --color-gold-800: #92400E;
-  --color-gold-900: #78350F;
 
   /* Surfaces */
-  --color-surface-lightMuted:  #F4F4F5;
-  --color-surface-dark:        #0A0A0A;
-  --color-surface-card:        #171717;
-  --color-surface-aiBubble:    #FFFFFF;
-  --color-surface-aiBubbleDark:#1C1C1C;
-  --color-surface-inputDark:   #1A1A1A;
-  --color-surface-canvasDark:  #0A0A0A;
+  --color-surface-canvas: #FAFAFA;
+  --color-surface-canvasDark: #121212;
+  --color-surface-aiBubbleDark: #1E1E1E;
+  --color-surface-inputDark: #1A1A1A;
 
   --font-sans: var(--font-vazirmatn), system-ui, -apple-system, sans-serif;
 }
 
 * { -webkit-tap-highlight-color: transparent; }
 
-/* Dashed upload box */
-.dashed-box {
-  border: 2px dashed #d4d4d4;
-  transition: all .25s ease;
-}
-.dark .dashed-box { border-color: #404040; }
-.dashed-box:hover, .dashed-box.dragover {
-  border-color: #FFB200;
-  background-color: #fafafa;
-}
-.dark .dashed-box:hover, .dark .dashed-box.dragover {
-  border-color: #FFB200;
-  background-color: #171717;
-}
+/* Glassmorphism */
+.glass-header { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.dark .glass-header { background: rgba(18, 18, 18, 0.85); }
 
 /* Scrollbars */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
-.dark ::-webkit-scrollbar-thumb { background: #334155; }
-
-/* Glassmorphism header */
-.glass-header { background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-.dark .glass-header { background: rgba(10,10,10,0.85); }
+::-webkit-scrollbar-thumb { background: #d4d4d4; border-radius: 9999px; }
+.dark ::-webkit-scrollbar-thumb { background: #404040; }
 
 /* Mic pulse */
 @keyframes ping-slow    { 0%{transform:scale(.8);opacity:.7} 80%,100%{transform:scale(2.2);opacity:0} }

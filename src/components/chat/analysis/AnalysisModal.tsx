@@ -90,7 +90,7 @@ export function AnalysisModal({
         {/* Header */}
         <div className="h-14 shrink-0 flex items-center justify-between px-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-brand-100 dark:bg-brand-950 text-brand-600 dark:text-brand-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-brand-cobaltLight dark:bg-brand-950 text-brand-cobalt dark:text-brand-400 flex items-center justify-center">
               <BarChart3 className="w-4 h-4" />
             </div>
             <p className="text-sm font-black text-slate-800 dark:text-slate-100">تحلیل سند</p>
@@ -100,7 +100,7 @@ export function AnalysisModal({
             <button
               onClick={() => load(true)}
               disabled={loading}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40 transition disabled:opacity-40"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-brand-cobalt dark:text-brand-400 hover:bg-neutral-100 dark:hover:bg-brand-950/40 transition disabled:opacity-40"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               بازتولید
@@ -108,7 +108,7 @@ export function AnalysisModal({
             <button
               onClick={exportPdf}
               disabled={exporting || !analysis}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-700 text-white transition disabled:opacity-40"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-brand-cobalt hover:bg-brand-cobaltHover text-white transition disabled:opacity-40"
             >
               {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
               <span className="hidden sm:inline">خروجی PDF</span>
@@ -126,7 +126,7 @@ export function AnalysisModal({
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex flex-col items-center justify-center gap-3 py-24">
-              <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
+              <Loader2 className="w-8 h-8 animate-spin text-brand-blue" />
               <p className="text-xs text-slate-500 dark:text-slate-400">در حال تحلیل سند...</p>
             </div>
           ) : error ? (
@@ -134,7 +134,7 @@ export function AnalysisModal({
               <p className="text-sm font-bold text-rose-600 dark:text-rose-400">{error}</p>
               <button
                 onClick={() => load(true)}
-                className="text-xs px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold transition"
+                className="text-xs px-4 py-2 rounded-xl bg-brand-cobalt hover:bg-brand-cobaltHover text-white font-bold transition"
               >
                 تلاش مجدد
               </button>
@@ -144,7 +144,7 @@ export function AnalysisModal({
               {/* Cover */}
               <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8">
                 <div className="flex items-center gap-2 mb-3">
-                  <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                  <Sparkles className="w-4 h-4 text-brand-cobalt dark:text-brand-400" />
                   <p className="text-[10px] font-black text-brand-700 dark:text-brand-300 tracking-wide">
                     تحلیل هوشمند سند
                   </p>
@@ -200,13 +200,13 @@ export function AnalysisModal({
               {analysis.keyFindings?.length > 0 && (
                 <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6">
                   <h2 className="text-sm font-black text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-brand-500" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-neutral-1000" />
                     یافته‌های کلیدی
                   </h2>
                   <ul className="space-y-3">
                     {analysis.keyFindings.map((f: string, i: number) => (
                       <li key={i} className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-lg bg-brand-50 dark:bg-brand-950 text-brand-700 dark:text-brand-300 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">
+                        <span className="w-6 h-6 rounded-lg bg-neutral-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">
                           {i + 1}
                         </span>
                         <p className="text-xs leading-loose text-slate-700 dark:text-slate-200">
@@ -222,7 +222,7 @@ export function AnalysisModal({
               {analysis.charts && analysis.charts.length > 0 && (
                 <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6">
                   <h2 className="text-sm font-black text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-brand-500" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-neutral-1000" />
                     تحلیل جدولی
                   </h2>
                   <div className="space-y-6">

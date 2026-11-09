@@ -28,55 +28,47 @@ export function AppShell({
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
-    <div className="flex h-[100dvh] overflow-hidden bg-surface-lightMuted dark:bg-surface-dark">
-      
-      {/* Mobile Sidebar Overlay */}
+    <div className="flex h-[100dvh] overflow-hidden bg-surface-canvas dark:bg-surface-canvasDark">
       {drawerOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden"
-          onClick={() => setDrawerOpen(false)}
-        />
+        <div className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden" onClick={() => setDrawerOpen(false)} />
       )}
 
-      {/* Sidebar */}
-      <aside
-        className={`
-          fixed inset-y-0 right-0 z-40 w-72 bg-white dark:bg-surface-card
-          border-l border-neutral-200 dark:border-neutral-800
-          transform transition-transform duration-300 ease-out
-          lg:relative lg:translate-x-0
-          ${drawerOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
-        `}
-      >
+      <aside className={`fixed inset-y-0 right-0 z-40 w-[280px] bg-white dark:bg-surface-canvasDark border-l border-neutral-200 dark:border-neutral-800 transform transition-transform duration-300 ease-out lg:relative lg:translate-x-0 ${drawerOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
         <Sidebar user={user} chats={chats} folders={folders} onClose={() => setDrawerOpen(false)} />
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-        
         {/* Mobile Topbar */}
-        <div className="lg:hidden h-14 flex items-center justify-between px-3 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-surface-card shrink-0">
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 transition"
-            aria-label="باز کردن منو"
-          >
+        <div className="lg:hidden h-14 flex items-center justify-between px-3 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-surface-canvasDark shrink-0">
+          <button onClick={() => setDrawerOpen(true)} className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
             <Menu className="w-5 h-5" />
           </button>
-
           <Link href="/" className="flex items-center gap-2">
             <DocwizeLogo className="w-7 h-7 text-gold-500" />
             <span className="font-black text-sm text-neutral-900 dark:text-white">Docwize</span>
           </Link>
-          
           <div className="w-10 flex justify-end">
             <ThemeToggle />
           </div>
         </div>
 
-        {/* Desktop Topbar (just theme toggle) */}
-        <div className="hidden lg:flex h-14 items-center justify-end px-4 border-b border-neutral-200 dark:border-neutral-800 bg-white/50 dark:bg-surface-card/50 shrink-0">
-          <ThemeToggle />
+        {/* Desktop Topbar */}
+        <div className="hidden lg:flex h-16 items-center justify-between px-6 border-b border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-surface-canvasDark/80 backdrop-blur-sm shrink-0 z-40">
+           <div className="flex items-center gap-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">
+              <Link href="/" className="hover:text-neutral-900 dark:hover:text-white transition">داشبورد</Link>
+              <span>/</span>
+              <span className="text-neutral-900 dark:text-white font-bold">اسناد من</span>
+           </div>
+           <div className="flex items-center gap-4">
+             <ThemeToggle />
+             <div className="h-6 w-px bg-neutral-200 dark:bg-neutral-700"></div>
+             <div className="flex items-center gap-2">
+               <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 truncate max-w-[150px]">{user.email}</span>
+               <div className="w-8 h-8 rounded-full bg-neutral-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-xs font-black shrink-0">
+                 {user.email[0].toUpperCase()}
+               </div>
+             </div>
+           </div>
         </div>
 
         {children}

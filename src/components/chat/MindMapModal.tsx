@@ -163,7 +163,7 @@ export function MindMapModal({
               ذخیره
             </button>
             <button onClick={regenerate} disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40 transition disabled:opacity-40">
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-brand-cobalt dark:text-brand-400 hover:bg-neutral-100 dark:hover:bg-brand-950/40 transition disabled:opacity-40">
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               بازتولید
             </button>
@@ -177,14 +177,14 @@ export function MindMapModal({
         <div className="flex-1 relative bg-slate-50 dark:bg-slate-950">
           {loading ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-              <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
+              <Loader2 className="w-8 h-8 animate-spin text-brand-blue" />
               <p className="text-xs text-slate-500 dark:text-slate-400">در حال ساخت نقشه ذهنی...</p>
             </div>
           ) : error ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center px-6">
               <p className="text-sm font-bold text-rose-600 dark:text-rose-400">{error}</p>
               <button onClick={regenerate}
-                className="text-xs px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold transition">
+                className="text-xs px-4 py-2 rounded-xl bg-brand-cobalt hover:bg-brand-cobaltHover text-white font-bold transition">
                 تلاش مجدد
               </button>
             </div>

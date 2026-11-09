@@ -10,7 +10,7 @@ const PdfViewerInner = dynamic(() => import('./PdfViewerInner'), {
   ssr: false,
   loading: () => (
     <div className="flex-1 flex items-center justify-center">
-      <Loader2 className="w-6 h-6 animate-spin text-brand-500" />
+      <Loader2 className="w-6 h-6 animate-spin text-brand-blue" />
     </div>
   ),
 });

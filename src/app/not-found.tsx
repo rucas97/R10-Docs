@@ -10,7 +10,7 @@ export default function NotFound() {
         </p>
         <Link
           href="/"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold transition"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-brand-cobalt hover:bg-brand-cobaltHover text-white text-sm font-bold transition"
         >
           بازگشت به صفحه اصلی
         </Link>

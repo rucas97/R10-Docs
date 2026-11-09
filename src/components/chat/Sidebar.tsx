@@ -2,98 +2,55 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  Plus, MessageSquare, Loader2, Trash2, Pin, PinOff,
-  FolderPlus, Folder, FolderOpen, ChevronDown, MoreVertical,
-  Search, FolderInput, X, FolderX,
-} from 'lucide-react';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { DocwizeLogo } from '@/components/DocwizeLogo';
+import { Plus, MessageSquare, Loader2, Trash2, Pin, PinOff, FolderPlus, Folder, FolderOpen, ChevronDown, MoreVertical, Search, FolderInput, X } from 'lucide-react';
 import { ProfileMenu } from './ProfileMenu';
+import { DocwizeLogo } from '@/components/DocwizeLogo';
 
-type Chat = {
-  id: string;
-  title: string;
-  updated_at: string;
-  is_pinned: boolean | null;
-  pinned_at: string | null;
-  folder_id: string | null;
-};
-type FolderT = { id: string; name: string; created_at: string };
+type Chat = { id: string; title: string; updated_at: string; is_pinned: boolean | null; pinned_at: string | null; folder_id: string | null; };
+type FolderT = { id: string; name: string; created_at: string; };
 
-type Tab = 'chats' | 'folders';
-type MenuState = { chatId: string; x: number; y: number } | null;
-
-export function Sidebar({
-  user, chats: initialChats, folders: initialFolders, onClose,
-}: {
-  user: { email: string; id: string };
-  chats: Chat[];
-  folders: FolderT[];
-  onClose: () => void;
-}) {
+export function Sidebar({ user, chats: initialChats, folders: initialFolders, onClose }: { user: { email: string; id: string }; chats: Chat[]; folders: FolderT[]; onClose: () => void; }) {
   const pathname = usePathname();
   const router = useRouter();
   const [chats, setChats] = useState(initialChats);
   const [folders, setFolders] = useState(initialFolders);
-  const [tab, setTab] = useState<Tab>('chats');
+  const [tab, setTab] = useState<'chats' | 'folders'>('chats');
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [menu, setMenu] = useState<MenuState>(null);
+  const [menu, setMenu] = useState<{ chatId: string; x: number; y: number } | null>(null);
   const [moveModal, setMoveModal] = useState<string | null>(null);
-  const [deleteFolderModal, setDeleteFolderModal] = useState<string | null>(null);
-  const [alsoDeleteChats, setAlsoDeleteChats] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { setChats(initialChats); }, [initialChats]);
   useEffect(() => { setFolders(initialFolders); }, [initialFolders]);
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 2500);
-  };
-
-  const closeAll = () => {
-    setMenu(null);
-    setMoveModal(null);
-  };
-
-  // ---- Actions ----
   const handleDelete = async (id: string) => {
-    closeAll();
+    setMenu(null);
     if (!confirm('این گفتگو حذف شود؟')) return;
     const prev = chats;
     setChats((c) => c.filter((x) => x.id !== id));
     setBusyId(id);
     const res = await fetch(`/api/chats/${id}`, { method: 'DELETE' });
     setBusyId(null);
-    if (!res.ok) { setChats(prev); showToast('حذف ناموفق بود'); return; }
+    if (!res.ok) { setChats(prev); alert('حذف ناموفق بود'); return; }
     if (pathname === `/chat/${id}`) router.push('/chat');
     router.refresh();
   };
 
   const handlePin = async (chat: Chat) => {
-    closeAll();
+    setMenu(null);
     setBusyId(chat.id);
     const method = chat.is_pinned ? 'DELETE' : 'POST';
     const prev = chats;
-    setChats((c) => c.map((x) => x.id === chat.id
-      ? { ...x, is_pinned: !chat.is_pinned, pinned_at: !chat.is_pinned ? new Date().toISOString() : null }
-      : x));
+    setChats((c) => c.map((x) => x.id === chat.id ? { ...x, is_pinned: !chat.is_pinned } : x));
     const res = await fetch(`/api/chats/${chat.id}/pin`, { method });
     setBusyId(null);
-    if (!res.ok) {
-      setChats(prev);
-      const d = await res.json().catch(() => ({}));
-      showToast(d.error || 'عملیات ناموفق بود');
-      return;
-    }
-    router.refresh();
+    if (!res.ok) { setChats(prev); }
+    else router.refresh();
   };
 
   const createFolder = async (): Promise<FolderT | null> => {
@@ -104,7 +61,7 @@ export function Sidebar({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: name.trim() }),
     });
-    if (!res.ok) { showToast('ایجاد پوشه ناموفق بود'); return null; }
+    if (!res.ok) return null;
     const { folder } = await res.json();
     setFolders((f) => [...f, folder]);
     setExpanded((e) => ({ ...e, [folder.id]: true }));
@@ -112,49 +69,8 @@ export function Sidebar({
     return folder;
   };
 
-  const renameFolder = async (folder: FolderT) => {
-    const name = prompt('نام جدید:', folder.name);
-    if (!name || !name.trim() || name.trim() === folder.name) return;
-    const res = await fetch(`/api/folders/${folder.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name.trim() }),
-    });
-    if (!res.ok) { showToast('تغییر نام ناموفق'); return; }
-    setFolders((f) => f.map((x) => x.id === folder.id ? { ...x, name: name.trim() } : x));
-    router.refresh();
-  };
-
-  const openDeleteFolder = (folderId: string) => {
-    setAlsoDeleteChats(false);
-    setDeleteFolderModal(folderId);
-  };
-
-  const confirmDeleteFolder = async () => {
-    const folderId = deleteFolderModal;
-    if (!folderId) return;
-    const folder = folders.find((f) => f.id === folderId);
-    if (!folder) return;
-
-    const res = await fetch(
-      `/api/folders/${folderId}?deleteChats=${alsoDeleteChats}`,
-      { method: 'DELETE' }
-    );
-    setDeleteFolderModal(null);
-    if (!res.ok) { showToast('حذف ناموفق'); return; }
-
-    setFolders((f) => f.filter((x) => x.id !== folderId));
-    if (alsoDeleteChats) {
-      setChats((c) => c.filter((x) => x.folder_id !== folderId));
-    } else {
-      setChats((c) => c.map((x) => x.folder_id === folderId ? { ...x, folder_id: null } : x));
-    }
-    showToast(alsoDeleteChats ? 'پوشه و گفتگوها حذف شدند' : 'پوشه حذف شد');
-    router.refresh();
-  };
-
   const moveChat = async (chatId: string, folderId: string | null) => {
-    closeAll();
+    setMoveModal(null);
     const prev = chats;
     setChats((c) => c.map((x) => x.id === chatId ? { ...x, folder_id: folderId } : x));
     const res = await fetch(`/api/chats/${chatId}/folder`, {
@@ -162,269 +78,37 @@ export function Sidebar({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ folderId }),
     });
-    if (!res.ok) {
-      setChats(prev);
-      showToast('جابجایی ناموفق');
-      return;
-    }
-    showToast(folderId ? 'به پوشه منتقل شد' : 'از پوشه خارج شد');
-    router.refresh();
+    if (!res.ok) setChats(prev);
+    else router.refresh();
   };
-
-  const MENU_W = 192; // w-48
-  const MENU_H = 160;
-  const GAP = 8;
 
   const openMenu = (chatId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setMoveModal(null);
-
-    // Try to open on the LEFT of the button (RTL-appropriate).
-    // Fall back to the RIGHT if there's not enough room.
-    let left = r.left - MENU_W - GAP;
-    if (left < GAP) left = r.right + GAP;
-
-    // Clamp hard against the viewport so the menu is always fully visible
-    left = Math.max(GAP, Math.min(left, window.innerWidth - MENU_W - GAP));
-
-    let top = r.top;
-    top = Math.max(GAP, Math.min(top, window.innerHeight - MENU_H - GAP));
-
-    setMenu({ chatId, x: left, y: top });
+    setMenu({ chatId, x: Math.min(r.right, window.innerWidth - 200), y: Math.min(r.bottom + 4, window.innerHeight - 200) });
   };
 
-  // ---- Filtering ----
-  const filteredChats = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return chats;
-    return chats.filter((c) => c.title.toLowerCase().includes(q));
-  }, [chats, query]);
-
+  const filteredChats = chats.filter((c) => c.title.toLowerCase().includes(query.toLowerCase()));
   const pinned = filteredChats.filter((c) => c.is_pinned);
   const looseChats = filteredChats.filter((c) => !c.is_pinned && !c.folder_id);
 
-  // ---- Render helpers ----
-  const renderMenuPortal = () => {
-    if (!menu || !mounted) return null;
-    const chat = chats.find((c) => c.id === menu.chatId);
-    if (!chat) return null;
-
-    return createPortal(
-      <>
-        <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
-        <div
-          className="fixed w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden"
-          style={{
-            top: menu.y,
-            left: menu.x,
-            zIndex: 9999,
-          }}
-          dir="rtl"
-        >
-          <button
-            onClick={() => handlePin(chat)}
-            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-brand-50 dark:hover:bg-slate-800 transition"
-          >
-            {chat.is_pinned ? <PinOff className="w-3.5 h-3.5 text-gold-500" /> : <Pin className="w-3.5 h-3.5 text-gold-500" />}
-            <span>{chat.is_pinned ? 'برداشتن پین' : 'پین کردن'}</span>
-          </button>
-          <button
-            onClick={() => { setMenu(null); setMoveModal(chat.id); }}
-            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-brand-50 dark:hover:bg-slate-800 transition border-t border-slate-100 dark:border-slate-800"
-          >
-            <FolderInput className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
-            <span>انتقال به پوشه</span>
-          </button>
-          <button
-            onClick={() => handleDelete(chat.id)}
-            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition border-t border-slate-100 dark:border-slate-800"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>حذف</span>
-          </button>
-        </div>
-      </>,
-      document.body
-    );
-  };
-
-  const renderDeleteFolderModal = () => {
-    if (!deleteFolderModal || !mounted) return null;
-    const folder = folders.find((f) => f.id === deleteFolderModal);
-    if (!folder) return null;
-    const chatsInFolder = chats.filter((c) => c.folder_id === folder.id);
-
-    return createPortal(
-      <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 999999 }} dir="rtl">
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDeleteFolderModal(null)} />
-        <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden">
-          <div className="h-14 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800">
-            <p className="text-sm font-black text-slate-800 dark:text-slate-100">حذف پوشه</p>
-            <button
-              onClick={() => setDeleteFolderModal(null)}
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="p-5">
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
-              آیا از حذف پوشه «<span className="font-black text-slate-800 dark:text-slate-100">{folder.name}</span>» مطمئن هستید؟
-            </p>
-
-            {chatsInFolder.length > 0 && (
-              <label className="flex items-start gap-3 p-3 rounded-2xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900 cursor-pointer mb-4">
-                <input
-                  type="checkbox"
-                  checked={alsoDeleteChats}
-                  onChange={(e) => setAlsoDeleteChats(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 accent-rose-600 shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-rose-700 dark:text-rose-300 mb-0.5">
-                    گفتگوهای داخل پوشه هم حذف شوند؟
-                  </p>
-                  <p className="text-[10px] text-rose-600/80 dark:text-rose-400/80 leading-relaxed">
-                    در این پوشه {chatsInFolder.length} گفتگو وجود دارد. اگر تیک نزنید، گفتگوها به بخش «گفتگوهای اخیر» منتقل می‌شوند.
-                  </p>
-                </div>
-              </label>
-            )}
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setDeleteFolderModal(null)}
-                className="flex-1 px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition"
-              >
-                انصراف
-              </button>
-              <button
-                onClick={confirmDeleteFolder}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-md shadow-rose-500/20"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                حذف پوشه
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>,
-      document.body
-    );
-  };
-
-  const renderMoveModal = () => {
-    if (!moveModal || !mounted) return null;
-    const chat = chats.find((c) => c.id === moveModal);
-    if (!chat) return null;
-
-    return createPortal(
-      <div
-        className="fixed inset-0 flex items-center justify-center p-4"
-        style={{ zIndex: 999999 }}
-        dir="rtl"
-      >
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeAll} />
-        <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden">
-          <div className="h-14 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800">
-            <p className="text-sm font-black text-slate-800 dark:text-slate-100">انتقال به پوشه</p>
-            <button
-              onClick={closeAll}
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="max-h-[60vh] overflow-y-auto p-2">
-            <button
-              onClick={() => moveChat(chat.id, null)}
-              className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-xs font-semibold transition ${
-                !chat.folder_id
-                  ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300'
-                  : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <FolderX className="w-4 h-4 text-slate-400 shrink-0" />
-              <span>بدون پوشه</span>
-            </button>
-
-            {folders.map((f) => (
-              <button
-                key={f.id}
-                onClick={() => moveChat(chat.id, f.id)}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-xs font-semibold transition ${
-                  chat.folder_id === f.id
-                    ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300'
-                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <Folder className="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0" />
-                <span className="truncate flex-1 text-right">{f.name}</span>
-                {chat.folder_id === f.id && <span className="text-[10px]">فعلی</span>}
-              </button>
-            ))}
-          </div>
-
-          <div className="p-3 border-t border-slate-200 dark:border-slate-800">
-            <button
-              onClick={async () => {
-                const folder = await createFolder();
-                if (folder) moveChat(chat.id, folder.id);
-              }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition"
-            >
-              <FolderPlus className="w-4 h-4" />
-              <span>پوشه جدید بساز و منتقل کن</span>
-            </button>
-          </div>
-        </div>
-      </div>,
-      document.body
-    );
-  };
-
-  // Chat row (used in both tabs, variant changes with context)
   const renderChatRow = (c: Chat, variant: 'list' | 'in-folder') => {
     const active = pathname === `/chat/${c.id}`;
     return (
       <li key={c.id} className="relative group">
-        <Link
-          href={`/chat/${c.id}`}
-          onClick={onClose}
-          className={`flex items-center gap-2 ps-2.5 pe-10 py-2.5 rounded-xl transition ${
-            active
-              ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300'
-              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          {c.is_pinned ? (
-            <Pin className="w-3.5 h-3.5 shrink-0 text-gold-500 fill-gold-500" />
-          ) : (
-            <MessageSquare className="w-4 h-4 shrink-0" />
-          )}
-          <span className="text-xs font-semibold truncate flex-1">{c.title}</span>
+        <Link href={`/chat/${c.id}`} onClick={onClose} className={`flex items-center gap-2 px-2.5 py-3 rounded-xl transition ${active ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white font-bold' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800/50 font-semibold'}`}>
+          {c.is_pinned ? <Pin className="w-4 h-4 shrink-0 text-gold-500 fill-gold-500" /> : <MessageSquare className="w-4 h-4 shrink-0" />}
+          <span className="text-xs truncate flex-1">{c.title}</span>
         </Link>
-
-        <div className="absolute left-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+        <div className="absolute left-1.5 top-3 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition">
           {variant === 'in-folder' ? (
-            <button
-              onClick={(e) => { e.preventDefault(); handleDelete(c.id); }}
-              disabled={busyId === c.id}
-              title="حذف"
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
-            >
-              {busyId === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+            <button onClick={(e) => { e.preventDefault(); handleDelete(c.id); }} className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           ) : (
-            <button
-              onClick={(e) => openMenu(c.id, e)}
-              title="گزینه‌ها"
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/40 transition"
-            >
+            <button onClick={(e) => openMenu(c.id, e)} className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition">
               <MoreVertical className="w-3.5 h-3.5" />
             </button>
           )}
@@ -435,112 +119,58 @@ export function Sidebar({
 
   return (
     <div className="flex flex-col h-full relative">
-      {renderMenuPortal()}
-      {renderMoveModal()}
-      {renderDeleteFolderModal()}
+      {/* Mobile Header */}
+      <div className="h-14 flex items-center justify-between px-4 border-b border-neutral-200 dark:border-neutral-800 lg:hidden">
+        <span className="font-black text-sm text-neutral-900 dark:text-white">گفتگوها</span>
+        <button onClick={onClose} className="w-8 h-8 flex items-center justify-center text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg"><X className="w-5 h-5" /></button>
+      </div>
 
-      {/* Header */}
-      <div className="h-16 flex items-center px-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
-        <Link href="/" className="flex items-center gap-2.5" onClick={onClose}>
-          <DocwizeLogo className="w-9 h-9 text-gold-500" />
-          <div className="flex flex-col">
-            <span className="font-black text-sm text-slate-900 dark:text-white leading-tight">R10-Docs</span>
-            <span className="text-[10px] text-brand-600 dark:text-brand-400 font-semibold">دستیار اسناد</span>
-          </div>
+      {/* Desktop Logo */}
+      <div className="hidden lg:flex h-16 items-center px-4 border-b border-neutral-200 dark:border-neutral-800">
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <DocwizeLogo className="w-8 h-8 text-gold-500 group-hover:scale-105 transition-transform" />
+          <span className="font-black text-lg text-neutral-900 dark:text-white">Docwize</span>
         </Link>
       </div>
 
-      {/* New chat */}
       <div className="p-3">
-        <Link
-          href="/chat"
-          onClick={onClose}
-          className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-2xl bg-gold-500 hover:bg-gold-600 text-black text-sm font-bold transition shadow-sm shadow-gold-500/20 active:scale-95"
-        >
+        <Link href="/chat" onClick={onClose} className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-2xl bg-gold-500 text-black text-sm font-bold shadow-sm shadow-gold-500/20 hover:bg-gold-600 transition active:scale-95">
           <Plus className="w-4 h-4" />
-          <span>گفتگوی جدید</span>
+          گفتگوی جدید
         </Link>
       </div>
 
-      {/* Tabs */}
-      <div className="px-3 pb-3 shrink-0">
-        <div className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-100 dark:bg-slate-950">
-          <button
-            onClick={() => setTab('chats')}
-            className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition ${
-              tab === 'chats'
-                ? 'bg-white dark:bg-slate-800 text-brand-700 dark:text-brand-300 shadow-sm'
-                : 'text-slate-500 dark:text-slate-400'
-            }`}
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            گفتگوها
+      <div className="px-3 pb-3">
+        <div className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-neutral-100 dark:bg-surface-aiBubbleDark">
+          <button onClick={() => setTab('chats')} className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition ${tab === 'chats' ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'}`}>
+            <MessageSquare className="w-3.5 h-3.5" /> گفتگوها
           </button>
-          <button
-            onClick={() => setTab('folders')}
-            className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition ${
-              tab === 'folders'
-                ? 'bg-white dark:bg-slate-800 text-brand-700 dark:text-brand-300 shadow-sm'
-                : 'text-slate-500 dark:text-slate-400'
-            }`}
-          >
-            <Folder className="w-3.5 h-3.5" />
-            پوشه‌ها
+          <button onClick={() => setTab('folders')} className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition ${tab === 'folders' ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'}`}>
+            <Folder className="w-3.5 h-3.5" /> پوشه‌ها
           </button>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="px-3 pb-2 shrink-0">
+      <div className="px-3 pb-2">
         <div className="relative">
-          <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="جستجوی گفتگو..."
-            className="w-full ps-9 pe-8 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-transparent focus:border-brand-500 focus:bg-white dark:focus:bg-slate-800 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none transition"
-          />
-          {query && (
-            <button
-              onClick={() => setQuery('')}
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          )}
+          <Search className="absolute right-2.5 top-2.5 w-4 h-4 text-neutral-400" />
+          <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="جستجوی گفتگو..." className="w-full pr-9 pl-3 py-2 rounded-xl bg-neutral-100 dark:bg-surface-aiBubbleDark text-xs border border-transparent focus:border-neutral-300 dark:focus:border-neutral-600 outline-none transition" />
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-2 pb-2">
+      <div className="flex-1 overflow-y-auto px-2">
         {tab === 'chats' && (
           <>
-            {filteredChats.length === 0 ? (
-              <p className="text-xs text-slate-400 dark:text-slate-500 text-center py-8 px-4">
-                {query ? 'چیزی پیدا نشد.' : 'هنوز گفتگویی ندارید.'}
-              </p>
-            ) : (
+            {pinned.length > 0 && (
               <>
-                {pinned.length > 0 && (
-                  <>
-                    <p className="text-[10px] font-black text-gold-600 dark:text-gold-400 px-3 pt-3 pb-1 flex items-center gap-1.5">
-                      <Pin className="w-3 h-3 fill-current" />
-                      پین‌شده‌ها ({pinned.length}/۴)
-                    </p>
-                    <ul className="space-y-0.5">{pinned.map((c) => renderChatRow(c, 'list'))}</ul>
-                  </>
-                )}
-                {looseChats.length > 0 && (
-                  <>
-                    {pinned.length > 0 && (
-                      <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 px-3 pt-4 pb-1">
-                        گفتگوهای اخیر
-                      </p>
-                    )}
-                    <ul className="space-y-0.5">{looseChats.map((c) => renderChatRow(c, 'list'))}</ul>
-                  </>
-                )}
+                <p className="text-[10px] font-black text-gold-500 px-3 pt-3 pb-1 flex items-center gap-1.5"><Pin className="w-3 h-3 fill-current" /> پین‌شده‌ها</p>
+                <ul className="space-y-0.5">{pinned.map(c => renderChatRow(c, 'list'))}</ul>
+              </>
+            )}
+            {looseChats.length > 0 && (
+              <>
+                <p className="text-[10px] font-black text-neutral-400 px-3 pt-3 pb-1">گفتگوهای اخیر</p>
+                <ul className="space-y-0.5">{looseChats.map(c => renderChatRow(c, 'list'))}</ul>
               </>
             )}
           </>
@@ -548,104 +178,68 @@ export function Sidebar({
 
         {tab === 'folders' && (
           <>
-            {folders.length === 0 ? (
-              <div className="text-center py-8 px-4">
-                <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 flex items-center justify-center">
-                  <FolderPlus className="w-6 h-6" />
+            <button onClick={createFolder} className="w-full flex items-center justify-center gap-1.5 px-3 py-2 mb-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-200 text-xs font-bold transition">
+              <FolderPlus className="w-3.5 h-3.5" /> پوشه جدید
+            </button>
+            {folders.map(f => {
+              const folderChats = filteredChats.filter(c => c.folder_id === f.id);
+              const isOpen = expanded[f.id] !== false;
+              return (
+                <div key={f.id} className="mb-1">
+                  <button onClick={() => setExpanded(e => ({ ...e, [f.id]: !isOpen }))} className="w-full flex items-center gap-2 px-2 py-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition">
+                    {isOpen ? <FolderOpen className="w-4 h-4 text-gold-500 shrink-0" /> : <Folder className="w-4 h-4 text-gold-500 shrink-0" />}
+                    <span className="text-xs font-bold text-neutral-700 dark:text-neutral-200 truncate flex-1 text-right">{f.name}</span>
+                    <span className="text-[10px] text-neutral-400">{folderChats.length}</span>
+                  </button>
+                  {isOpen && folderChats.length > 0 && <ul className="space-y-0.5 ps-3">{folderChats.map(c => renderChatRow(c, 'in-folder'))}</ul>}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                  هنوز پوشه‌ای ندارید.
-                </p>
-                <button
-                  onClick={createFolder}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition shadow-md shadow-brand-500/20"
-                >
-                  <FolderPlus className="w-4 h-4" />
-                  افزودن پوشه
-                </button>
-              </div>
-            ) : (
-              <>
-                <button
-                  onClick={createFolder}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 mb-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold transition"
-                >
-                  <FolderPlus className="w-3.5 h-3.5" />
-                  پوشه جدید
-                </button>
-
-                {folders.map((f) => {
-                  const folderChats = filteredChats.filter((c) => c.folder_id === f.id);
-                  const isOpen = expanded[f.id] !== false;
-                  return (
-                    <div key={f.id} className="mb-1">
-                      <div className="flex items-center gap-1 px-2 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition group">
-                        <button
-                          onClick={() => setExpanded((e) => ({ ...e, [f.id]: !isOpen }))}
-                          className="flex items-center gap-2 flex-1 min-w-0 text-right"
-                        >
-                          {isOpen ? (
-                            <FolderOpen className="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0" />
-                          ) : (
-                            <Folder className="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0" />
-                          )}
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate flex-1">
-                            {f.name}
-                          </span>
-                          <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                            {folderChats.length}
-                          </span>
-                          <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform shrink-0 ${isOpen ? '' : '-rotate-90'}`} />
-                        </button>
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <button
-                            onClick={() => renameFolder(f)}
-                            title="تغییر نام"
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-slate-700 active:scale-90 transition"
-                          >
-                            <span className="text-[12px] font-bold">✎</span>
-                          </button>
-                          <button
-                            onClick={() => openDeleteFolder(f.id)}
-                            title="حذف پوشه"
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 active:scale-90 transition"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                      {isOpen && folderChats.length > 0 && (
-                        <ul className="space-y-0.5 ps-3">{folderChats.map((c) => renderChatRow(c, 'in-folder'))}</ul>
-                      )}
-                      {isOpen && folderChats.length === 0 && (
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500 px-3 py-1.5">
-                          خالی — از تب گفتگوها به این پوشه منتقل کنید
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </>
-            )}
+              );
+            })}
           </>
         )}
       </div>
 
-      {/* Footer */}
-      <div className="p-3 border-t border-slate-200 dark:border-slate-800 shrink-0">
-        <div className="flex items-center gap-2">
-          <ProfileMenu email={user.email} />
-          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate flex-1" dir="ltr">
-            {user.email}
-          </span>
-          <ThemeToggle />
-        </div>
+      <div className="p-3 border-t border-neutral-200 dark:border-neutral-800 flex items-center gap-2">
+        <ProfileMenu email={user.email} />
+        <span className="text-xs font-semibold truncate flex-1 text-neutral-700 dark:text-neutral-300">{user.email}</span>
       </div>
 
-      {toast && (
-        <div className="absolute bottom-24 left-3 right-3 px-3 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 text-white text-xs font-semibold text-center shadow-xl">
-          {toast}
-        </div>
+      {/* Menus */}
+      {menu && mounted && createPortal(
+        <>
+          <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setMenu(null)} />
+          <div className="fixed w-48 bg-white dark:bg-surface-aiBubbleDark border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-2xl overflow-hidden" style={{ top: menu.y, left: menu.x, zIndex: 9999 }} dir="rtl">
+            <button onClick={() => handlePin(chats.find(c => c.id === menu.chatId)!)} className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition">
+              <Pin className="w-3.5 h-3.5 text-gold-500" /> برداشتن/پین کردن
+            </button>
+            <button onClick={() => { setMenu(null); setMoveModal(menu.chatId); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition border-t border-neutral-100 dark:border-neutral-800">
+              <FolderInput className="w-3.5 h-3.5 text-brand-cobalt" /> انتقال به پوشه
+            </button>
+            <button onClick={() => handleDelete(menu.chatId)} className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition border-t border-neutral-100 dark:border-neutral-800">
+              <Trash2 className="w-3.5 h-3.5" /> حذف
+            </button>
+          </div>
+        </>, document.body
+      )}
+
+      {moveModal && mounted && createPortal(
+        <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 999999 }} dir="rtl">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMoveModal(null)} />
+          <div className="relative w-full max-w-sm bg-white dark:bg-surface-aiBubbleDark rounded-3xl shadow-2xl overflow-hidden p-4">
+            <h3 className="text-sm font-black text-neutral-900 dark:text-white mb-4">انتقال به پوشه</h3>
+            <div className="max-h-60 overflow-y-auto space-y-1">
+              <button onClick={() => moveChat(moveModal, null)} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition">
+                <X className="w-4 h-4" /> بدون پوشه
+              </button>
+              {folders.map(f => (
+                <button key={f.id} onClick={() => moveChat(moveModal, f.id)} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition">
+                  <Folder className="w-4 h-4 text-gold-500" /> {f.name}
+                </button>
+              ))}
+            </div>
+            <button onClick={async () => { const f = await createFolder(); if (f) moveChat(moveModal, f.id); }} className="w-full mt-4 py-2.5 rounded-xl bg-brand-cobalt text-white text-xs font-bold">پوشه جدید +</button>
+          </div>
+        </div>, document.body
       )}
     </div>
   );

@@ -65,7 +65,7 @@ export function CommentSheet({
       <div className="relative w-full sm:max-w-md max-h-[80vh] bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden">
         <div className="h-14 shrink-0 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+            <MessageSquare className="w-4 h-4 text-brand-cobalt dark:text-brand-400" />
             <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
               یادداشت‌های من
             </p>
@@ -81,7 +81,7 @@ export function CommentSheet({
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {loading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-brand-500" />
+              <Loader2 className="w-5 h-5 animate-spin text-brand-blue" />
             </div>
           ) : comments.length === 0 ? (
             <p className="text-xs text-slate-400 dark:text-slate-500 text-center py-8">
@@ -120,7 +120,7 @@ export function CommentSheet({
             <button
               onClick={send}
               disabled={sending || !input.trim()}
-              className="w-10 h-10 rounded-xl bg-brand-600 hover:bg-brand-700 text-white flex items-center justify-center transition disabled:opacity-50"
+              className="w-10 h-10 rounded-xl bg-brand-cobalt hover:bg-brand-cobaltHover text-white flex items-center justify-center transition disabled:opacity-50"
             >
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 -scale-x-100" />}
             </button>
