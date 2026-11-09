@@ -114,7 +114,7 @@ export function UploadZone() {
   const busy = stage === 'uploading' || stage === 'summarizing';
 
   return (
-    <div className="bg-white dark:bg-surface-card rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-xl p-4 sm:p-8">
+    <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-xl p-4 sm:p-8">
       <label
         onDragEnter={(e) => { e.preventDefault(); setDragging(true); }}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -123,7 +123,7 @@ export function UploadZone() {
         className={`block rounded-3xl border-2 border-dashed p-8 sm:p-14 text-center transition cursor-pointer ${
           dragging
             ? 'border-gold-500 bg-gold-50/50 dark:bg-gold-900/10'
-            : 'border-neutral-300 dark:border-neutral-700 hover:border-gold-500 hover:bg-neutral-50 dark:hover:bg-neutral-900/50'
+            : 'border-neutral-300 dark:border-neutral-700 hover:border-gold-500 hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
         } ${busy ? 'cursor-wait' : ''}`}
       >
         <input
@@ -154,7 +154,7 @@ export function UploadZone() {
 
           {stage === 'idle' && (
             <>
-              <h3 className="text-xl font-bold text-neutral-800 dark:text-neutral-100 mb-2">
+              <h3 className="text-xl font-bold text-neutral-800 dark:text-white mb-2">
                 فایل PDF را اینجا رها کنید
               </h3>
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6 max-w-sm mx-auto">
@@ -168,7 +168,7 @@ export function UploadZone() {
 
           {busy && (
             <>
-              <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-100 mb-1 truncate max-w-full px-4">
+              <h3 className="text-sm font-bold text-neutral-800 dark:text-white mb-1 truncate max-w-full px-4">
                 {fileName}
               </h3>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
@@ -203,14 +203,14 @@ export function UploadZone() {
                 {chatId ? (
                   <>
                     <button
-                      onClick={retrySummary}
+                      onClick={(e) => { e.preventDefault(); retrySummary(); }}
                       className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-cobalt hover:bg-brand-cobaltHover text-white text-xs font-bold transition"
                     >
                       <RefreshCw className="w-4 h-4" />
                       تلاش مجدد
                     </button>
                     <button
-                      onClick={reset}
+                      onClick={(e) => { e.preventDefault(); reset(); }}
                       className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-200 text-xs font-bold transition"
                     >
                       سند جدید
@@ -218,7 +218,7 @@ export function UploadZone() {
                   </>
                 ) : (
                   <button
-                    onClick={reset}
+                    onClick={(e) => { e.preventDefault(); reset(); }}
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-cobalt hover:bg-brand-cobaltHover text-white text-xs font-bold transition"
                   >
                     تلاش مجدد
