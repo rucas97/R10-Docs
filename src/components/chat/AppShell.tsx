@@ -5,6 +5,7 @@ import { Menu } from 'lucide-react';
 import Link from 'next/link';
 import { Sidebar } from './Sidebar';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { ProfileMenu } from './ProfileMenu';
 import { DocwizeLogo } from '@/components/DocwizeLogo';
 
 type Chat = {
@@ -47,8 +48,9 @@ export function AppShell({
             <DocwizeLogo className="w-7 h-7 text-gold-500" />
             <span className="font-black text-sm text-neutral-900 dark:text-white">Docwize</span>
           </Link>
-          <div className="w-10 flex justify-end">
+          <div className="flex items-center gap-2">
             <ThemeToggle />
+            <ProfileMenu email={user.email} />
           </div>
         </div>
 
@@ -64,9 +66,7 @@ export function AppShell({
              <div className="h-6 w-px bg-neutral-200 dark:bg-neutral-700"></div>
              <div className="flex items-center gap-2">
                <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 truncate max-w-[150px]">{user.email}</span>
-               <div className="w-8 h-8 rounded-full bg-neutral-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-xs font-black shrink-0">
-                 {user.email[0].toUpperCase()}
-               </div>
+               <ProfileMenu email={user.email} />
              </div>
            </div>
         </div>
