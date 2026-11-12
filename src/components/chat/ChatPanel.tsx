@@ -12,7 +12,6 @@ import { CommentSheet } from './CommentSheet';
 import { SummaryCard } from './SummaryCard';
 import { MindMapModal } from './MindMapModal';
 import { AnalysisModal } from './analysis/AnalysisModal';
-import { SettingsModal } from './settings/SettingsModal';
 import { DocwizeLogo } from '@/components/DocwizeLogo';
 
 type Msg = { id: string; role: 'user' | 'assistant'; content: string; replyToId?: string | null; };
@@ -102,7 +101,6 @@ export function ChatPanel({ chat, pdfUrl, initialMessages, messageLookup }: { ch
   const [commentFor, setCommentFor] = useState<string | null>(null);
   const [showMindmap, setShowMindmap] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [replyTarget, setReplyTarget] = useState<{ id: string; content: string; role: 'user' | 'assistant' } | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const accRef = useRef('');
@@ -202,8 +200,6 @@ export function ChatPanel({ chat, pdfUrl, initialMessages, messageLookup }: { ch
       {commentFor && <CommentSheet messageId={commentFor} onClose={() => setCommentFor(null)} onCountChange={() => {}} />}
       {showMindmap && <MindMapModal chatId={chat.id} initial={chat.mindmap} onClose={() => setShowMindmap(false)} />}
       {showAnalysis && <AnalysisModal chatId={chat.id} chatTitle={chat.fileName} initial={chat.analysis} onClose={() => setShowAnalysis(false)} />}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
-      <GlobalSettingsListener onOpen={() => setShowSettings(true)} />
     </>
   );
 }
