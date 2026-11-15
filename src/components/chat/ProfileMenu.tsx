@@ -1,16 +1,14 @@
 'use client';
-
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Settings, LogOut, Loader2 } from 'lucide-react';
+import { Settings, LogOut, User, LifeBuoy, CreditCard, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
-export function ProfileMenu({ email, avatarUrl }: { email: string; avatarUrl?: string | null }) {
+export function ProfileMenu({ email }: { email: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [imgError, setImgError] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,59 +27,41 @@ export function ProfileMenu({ email, avatarUrl }: { email: string; avatarUrl?: s
     router.refresh();
   };
 
-  const showImage = avatarUrl && !imgError;
-
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
         title={email}
-        className="w-8 h-8 rounded-full bg-brand-cobalt text-white flex items-center justify-center text-xs font-black hover:opacity-90 transition overflow-hidden shrink-0"
+        className="w-9 h-9 rounded-full bg-brand-cobalt text-white flex items-center justify-center text-xs font-black hover:opacity-90 transition"
       >
-        {showImage ? (
-          <img 
-            src={avatarUrl!} 
-            alt="Profile" 
-            className="w-full h-full object-cover" 
-            onError={() => setImgError(true)} 
-          />
-        ) : (
-          (email[0] ?? '?').toUpperCase()
-        )}
+        {(email[0] ?? '?').toUpperCase()}
       </button>
 
       {open && (
-        <div className="absolute top-10 left-0 w-56 bg-white dark:bg-surface-aiBubbleDark border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-2xl overflow-hidden z-[9999]">
-          <div className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-brand-cobalt text-white flex items-center justify-center text-sm font-black overflow-hidden shrink-0">
-              {showImage ? (
-                <img src={avatarUrl!} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                (email[0] ?? '?').toUpperCase()
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mb-0.5">حساب کاربری</p>
-              <p className="text-xs font-bold text-neutral-800 dark:text-neutral-200 truncate" dir="ltr">{email}</p>
-            </div>
+        <div className="absolute top-12 left-0 w-56 bg-white dark:bg-surface-cardDark border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-2xl overflow-hidden z-[100]">
+          <div className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-[#1A1A1A]">
+            <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mb-0.5">حساب کاربری</p>
+            <p className="text-xs font-bold text-neutral-800 dark:text-neutral-200 truncate" dir="ltr">
+              {email}
+            </p>
           </div>
 
-          <button
-            onClick={() => { setOpen(false); router.push('/settings'); }}
-            className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition"
-          >
-            <Settings className="w-3.5 h-3.5" />
-            <span>تنظیمات</span>
-          </button>
+          <Link href="/settings" onClick={() => setOpen(false)} className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition">
+            <User className="w-3.5 h-3.5" /> <span>پروفایل و تنظیمات</span>
+          </Link>
+          
+          <Link href="/pricing" onClick={() => setOpen(false)} className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition">
+            <CreditCard className="w-3.5 h-3.5" /> <span>پلن و اشتراک</span>
+          </Link>
+
+          <Link href="/support" onClick={() => setOpen(false)} className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition">
+            <LifeBuoy className="w-3.5 h-3.5" /> <span>پشتیبانی</span>
+          </Link>
 
           <div className="border-t border-neutral-100 dark:border-neutral-800" />
 
-          <button
-            onClick={signOut}
-            disabled={busy}
-            className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition disabled:opacity-60"
-          >
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
+          <button onClick={signOut} disabled={busy} className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition disabled:opacity-60">
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />} 
             <span>{busy ? 'در حال خروج...' : 'خروج از حساب'}</span>
           </button>
         </div>

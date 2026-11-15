@@ -1,8 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { ArrowRight, Wrench, CreditCard, User, Bot, MessageSquare, CheckCircle } from 'lucide-react';
-import { DocwizeLogo } from '@/components/DocwizeLogo';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { AppHeader } from '@/components/layout/AppHeader';
 
 export default async function UserTicketsPage() {
   const supabase = await createClient();
@@ -11,12 +10,7 @@ export default async function UserTicketsPage() {
 
   return (
     <div className="bg-surface-canvas dark:bg-surface-canvasDark min-h-screen">
-      <header className="sticky top-0 z-50 glass-header border-b border-neutral-200/60 dark:border-neutral-800/60">
-        <div className="max-w-5xl mx-auto px-4 h-20 flex items-center justify-between">
-          <Link href="/chat" className="flex items-center gap-3"><DocwizeLogo className="w-8 h-8 text-gold-500" /><span className="font-black text-xl hidden sm:block">Docwize</span></Link>
-          <ThemeToggle />
-        </div>
-      </header>
+<AppHeader email={user?.email || ''} />
       <main className="max-w-5xl mx-auto px-4 py-10">
         <Link href="/support" className="inline-flex items-center gap-2 text-sm font-bold text-neutral-500 mb-6"><ArrowRight className="w-4 h-4" /> بازگشت به مرکز پشتیبانی</Link>
         <h1 className="text-2xl font-black mb-6">مدیریت تیکت‌ها</h1>

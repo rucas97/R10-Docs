@@ -2,10 +2,9 @@
 import { useState } from 'react';
 import { Send, ArrowRight, Headset, Image as ImageIcon } from 'lucide-react';
 import Link from 'next/link';
-import { DocwizeLogo } from '@/components/DocwizeLogo';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { AppHeader } from '@/components/layout/AppHeader';
 
-export function UserTicketChat({ ticket, initialMessages }: { ticket: any, initialMessages: any[] }) {
+export function UserTicketChat({ ticket, initialMessages, email }: { ticket: any, initialMessages: any[], email: string }) {
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState('');
 
@@ -26,10 +25,7 @@ export function UserTicketChat({ ticket, initialMessages }: { ticket: any, initi
 
   return (
     <div className="flex flex-col h-screen bg-surface-canvas dark:bg-surface-canvasDark">
-      <header className="shrink-0 glass-header border-b border-neutral-200/60 dark:border-neutral-800/60 h-16 flex items-center justify-between px-4">
-        <Link href="/chat" className="flex items-center gap-3"><DocwizeLogo className="w-8 h-8 text-gold-500" /><span className="font-black text-xl hidden sm:block">Docwize</span></Link>
-        <ThemeToggle />
-      </header>
+<AppHeader email={email} />
 
       <div className="flex-1 flex w-full min-h-0">
         <aside className="hidden lg:flex w-72 border-l border-neutral-200 dark:border-neutral-800 p-6 flex-col gap-4">

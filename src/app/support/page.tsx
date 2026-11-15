@@ -1,8 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { DocwizeLogo } from '@/components/DocwizeLogo';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { AppHeader } from '@/components/layout/AppHeader';
 import { Loader2, MessageSquare, CheckCircle, PlusCircle, ArrowLeft } from 'lucide-react';
 import { SupportForm } from './SupportForm';
 
@@ -24,12 +23,7 @@ export default async function SupportPage() {
 
   return (
     <div className="bg-surface-canvas dark:bg-surface-canvasDark min-h-screen">
-      <header className="sticky top-0 z-50 glass-header border-b border-neutral-200/60 dark:border-neutral-800/60">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/chat" className="flex items-center gap-3"><DocwizeLogo className="w-8 h-8 text-gold-500" /><span className="font-black text-xl hidden sm:block">Docwize</span></Link>
-          <ThemeToggle />
-        </div>
-      </header>
+<AppHeader email={user.email || ''} />
 
       <main className="max-w-3xl mx-auto px-4 py-10">
         <div className="text-center mb-8">

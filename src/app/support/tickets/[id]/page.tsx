@@ -23,5 +23,5 @@ export default async function UserTicketDetail({ params }: { params: Promise<{ i
     .eq('ticket_id', id)
     .order('created_at', { ascending: true });
 
-  return <UserTicketChat ticket={ticket} initialMessages={messages || []} />;
+  return <UserTicketChat ticket={ticket} initialMessages={messages || []} email={user.email || ''} />;
 }

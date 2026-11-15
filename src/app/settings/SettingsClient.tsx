@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePrefs, savePrefs } from '@/lib/preferences';
-import { DocwizeLogo } from '@/components/DocwizeLogo';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { AppHeader } from '@/components/layout/AppHeader';
 import { User, CreditCard, Sliders, Shield, Bell, ChevronLeft, ArrowRight, Sun, Moon, Monitor, Check } from 'lucide-react';
 
 type Tab = 'profile' | 'subscription' | 'preferences' | 'security' | 'notifications';
@@ -30,25 +29,7 @@ export function SettingsClient({ email, phone }: { email: string; phone: string 
   return (
     <div className="bg-surface-canvas dark:bg-surface-canvasDark text-neutral-900 dark:text-neutral-100 antialiased min-h-[100dvh] flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-50 glass-header border-b border-neutral-200/60 dark:border-neutral-800/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link href="/chat" className="flex items-center gap-3 group">
-            <DocwizeLogo className="w-8 h-8 text-gold-500 group-hover:scale-105 transition-transform" />
-            <span className="font-black text-xl tracking-tight hidden sm:block">Docwize</span>
-          </Link>
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-neutral-600 dark:text-neutral-400">
-            <Link href="/chat" className="hover:text-neutral-900 dark:hover:text-white transition">داشبورد</Link>
-            <Link href="/pricing" className="hover:text-neutral-900 dark:hover:text-white transition">پلن‌ها</Link>
-            <Link href="/settings" className="text-neutral-900 dark:text-white font-bold transition">تنظیمات</Link>
-          </nav>
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            <div className="w-9 h-9 rounded-full bg-brand-cobalt dark:bg-brand-blue text-white flex items-center justify-center text-xs font-black shrink-0 border border-neutral-300 dark:border-neutral-600 shadow-sm">
-              {email[0]?.toUpperCase() || 'U'}
-            </div>
-          </div>
-        </div>
-      </header>
+<AppHeader email={email} />
 
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-12 flex flex-col md:flex-row gap-8 items-start">
         
