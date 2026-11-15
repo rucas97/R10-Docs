@@ -1,24 +1,26 @@
-'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { DocwizeLogo } from '@/components/DocwizeLogo';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Loader2, MessageSquare, CheckCircle, PlusCircle, ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
+import { SupportForm } from './SupportForm';
 
-export default function SupportPage() {
-  const router = useRouter();
-  const [form, setForm] = useState({ subject: '', category: 'tech', priority: 'medium', description: '' });
+export default async function SupportPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = await fetch('/api/tickets', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form)
-    });
-    if (res.ok) router.push('/support/tickets');
-  };
+  // Fetch real ticket counts from the database
+  const { data: tickets } = await supabase
+    .from('tickets')
+    .select('status')
+    .eq('user_id', user.id);
+
+  const total = tickets?.length || 0;
+  const progress = tickets?.filter(t => t.status === 'progress').length || 0;
+  const awaiting = tickets?.filter(t => t.status === 'awaiting').length || 0;
+  const closed = tickets?.filter(t => t.status === 'closed').length || 0;
 
   return (
     <div className="bg-surface-canvas dark:bg-surface-canvasDark min-h-screen">
@@ -35,24 +37,30 @@ export default function SupportPage() {
           <p className="text-sm text-neutral-500">وضعیت تیکت‌های خود را بررسی کنید یا تیکت جدیدی ثبت نمایید.</p>
         </div>
 
+        {/* Real Data Grid */}
         <div className="grid grid-cols-2 gap-3 mb-8">
-           <Link href="/support/tickets?filter=all" className="bg-white dark:bg-[#171717] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 flex justify-between shadow-sm"><span className="text-sm font-bold">کل تیکت‌ها</span><span className="font-black">۴</span></Link>
-           <Link href="/support/tickets?filter=progress" className="bg-white dark:bg-[#171717] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 flex justify-between shadow-sm"><span className="text-sm font-bold text-brand-cobalt">در حال بررسی</span><span className="font-black text-brand-cobalt">۱</span></Link>
-           <Link href="/support/tickets?filter=awaiting" className="bg-white dark:bg-[#171717] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 flex justify-between shadow-sm"><span className="text-sm font-bold text-gold-500">منتظر پاسخ شما</span><span className="font-black text-gold-500">۱</span></Link>
-           <Link href="/support/tickets?filter=closed" className="bg-white dark:bg-[#171717] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 flex justify-between shadow-sm"><span className="text-sm font-bold text-neutral-500">بسته شده</span><span className="font-black text-neutral-500">۲</span></Link>
+           <Link href="/support/tickets?filter=all" className="bg-white dark:bg-[#171717] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 flex justify-between shadow-sm">
+             <span className="text-sm font-bold">کل تیکت‌ها</span>
+             <span className="font-black">{total}</span>
+           </Link>
+           <Link href="/support/tickets?filter=progress" className="bg-white dark:bg-[#171717] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 flex justify-between shadow-sm">
+             <span className="text-sm font-bold text-brand-cobalt">در حال بررسی</span>
+             <span className="font-black text-brand-cobalt">{progress}</span>
+           </Link>
+           <Link href="/support/tickets?filter=awaiting" className="bg-white dark:bg-[#171717] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 flex justify-between shadow-sm">
+             <span className="text-sm font-bold text-gold-500">منتظر پاسخ شما</span>
+             <span className="font-black text-gold-500">{awaiting}</span>
+           </Link>
+           <Link href="/support/tickets?filter=closed" className="bg-white dark:bg-[#171717] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 flex justify-between shadow-sm">
+             <span className="text-sm font-bold text-neutral-500">بسته شده</span>
+             <span className="font-black text-neutral-500">{closed}</span>
+           </Link>
         </div>
 
+        {/* New Ticket Form */}
         <div className="bg-white dark:bg-[#171717] rounded-3xl p-6 shadow-sm border border-neutral-200 dark:border-neutral-800">
           <h2 className="text-lg font-bold mb-6 flex items-center gap-2"><PlusCircle className="w-5 h-5 text-gold-500" /> ثبت تیکت جدید</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <input required placeholder="موضوع درخواست" value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} className="w-full bg-neutral-50 dark:bg-[#1A1A1A] border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-sm outline-none" />
-            <div className="grid grid-cols-2 gap-4">
-              <select value={form.category} onChange={e => setForm({...form, category: e.target.value})} className="w-full bg-neutral-50 dark:bg-[#1A1A1A] border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-sm outline-none"><option value="tech">مشکل فنی</option><option value="ai">هوش مصنوعی</option><option value="billing">مالی</option></select>
-              <select value={form.priority} onChange={e => setForm({...form, priority: e.target.value})} className="w-full bg-neutral-50 dark:bg-[#1A1A1A] border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-sm outline-none"><option value="low">کم</option><option value="medium">متوسط</option><option value="high">بالا</option></select>
-            </div>
-            <textarea required rows={5} placeholder="شرح درخواست..." value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="w-full bg-neutral-50 dark:bg-[#1A1A1A] border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-sm outline-none resize-none" />
-            <button type="submit" className="w-full bg-gold-500 hover:bg-gold-600 text-black font-bold py-3 rounded-xl transition">ارسال تیکت</button>
-          </form>
+          <SupportForm />
         </div>
       </main>
     </div>

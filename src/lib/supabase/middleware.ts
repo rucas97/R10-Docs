@@ -10,9 +10,7 @@ export async function updateSession(request: NextRequest) {
 
   const supabase = createServerClient(url, key, {
     cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
+      getAll() { return request.cookies.getAll(); },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
         supabaseResponse = NextResponse.next({ request });
@@ -24,8 +22,13 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
 
-  // 1. Protect Admin Routes
-  if (path.startsWith('/admin') && path !== '/admin/login') {
+  // 1. Admin Login Route is PUBLIC
+  if (path === '/admin/login') {
+    return supabaseResponse;
+  }
+
+  // 2. Protect other Admin routes
+  if (path.startsWith('/admin')) {
     const adminSession = request.cookies.get('admin_session');
     if (!adminSession) {
       const redirectUrl = request.nextUrl.clone();
@@ -34,7 +37,7 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  // 2. Protect User Routes
+  // 3. Protect User Routes
   if (!user && (path === '/chat' || path.startsWith('/chat/') || path === '/support' || path.startsWith('/support/'))) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = '/login';
@@ -42,11 +45,10 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // 3. Redirect logged in users away from login page
+  // 4. Redirect logged in users away from login
   if (user && path === '/login') {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = '/chat';
-    redirectUrl.search = '';
     return NextResponse.redirect(redirectUrl);
   }
 
