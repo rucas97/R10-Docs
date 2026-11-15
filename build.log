@@ -1,0 +1,38 @@
+
+> r10-docs@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.27
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+
+<--- Last few GCs --->
+
+[15712:000001E99CF1A000]    39916 ms: Scavenge 463.8 (531.8) -> 446.1 (548.1) MB, pooled: 0 MB, 191.49 / 0.00 ms  (average mu = 0.973, current mu = 0.988) allocation failure; 
+[15712:000001E99CF1A000]    40771 ms: Scavenge 480.3 (548.9) -> 467.1 (579.6) MB, pooled: 0 MB, 557.92 / 0.00 ms  (average mu = 0.973, current mu = 0.988) allocation failure; 
+
+FATAL ERROR: Zone Allocation failed - process out of memory
+----- Native stack trace -----
+
+ 1: 00007FF6EB2090C6 
+ 2: 00007FF6EB209604 
+ 3: 00007FF6E9E13617 
+ 4: 00007FF6E978B506 
+ 5: 00007FF6EAC87270 
+ 6: 00007FF6EAC86F40 
+ 7: 00007FF6EAC86B03 
+ 8: 00007FF6EAC86926 
+ 9: 00007FF6EA8305E6 
+10: 00007FF6EA8271A3 
+11: 00007FF6EA826660 
+12: 00007FF6E9D872CF 
+13: 00007FF6E9D4C31D 
+14: 00007FF6E9D4C015 
+15: 00007FF6EA612CEF 
+16: 00007FF6EB149BDB 
+17: 00007FF6E9E68A26 
+18: 00007FF6EB54F483 
+19: 00007FF8292D7374 
+20: 00007FF82A91CC91 
+Next.js build worker exited with code: 134 and signal: null

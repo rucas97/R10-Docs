@@ -4,12 +4,9 @@ import { NextResponse, type NextRequest } from 'next/server';
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
-  // If env vars are missing, skip auth entirely (build-time safety)
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) {
-    return supabaseResponse;
-  }
+  if (!url || !key) return supabaseResponse;
 
   const supabase = createServerClient(url, key, {
     cookies: {
@@ -17,35 +14,35 @@ export async function updateSession(request: NextRequest) {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) =>
-          request.cookies.set(name, value)
-        );
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
         supabaseResponse = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) =>
-          supabaseResponse.cookies.set(name, value, options)
-        );
+        cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options));
       },
     },
   });
 
-  // Never let an auth failure crash the whole request
-  let user = null;
-  try {
-    const { data } = await supabase.auth.getUser();
-    user = data.user;
-  } catch (e) {
-    console.warn('[proxy] auth check failed:', e);
-  }
-
+  const { data: { user } } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
 
-  if (!user && (path === '/chat' || path.startsWith('/chat/'))) {
+  // 1. Protect Admin Routes
+  if (path.startsWith('/admin') && path !== '/admin/login') {
+    const adminSession = request.cookies.get('admin_session');
+    if (!adminSession) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = '/admin/login';
+      return NextResponse.redirect(redirectUrl);
+    }
+  }
+
+  // 2. Protect User Routes
+  if (!user && (path === '/chat' || path.startsWith('/chat/') || path === '/support' || path.startsWith('/support/'))) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = '/login';
     redirectUrl.searchParams.set('next', path);
     return NextResponse.redirect(redirectUrl);
   }
 
+  // 3. Redirect logged in users away from login page
   if (user && path === '/login') {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = '/chat';
