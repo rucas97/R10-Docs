@@ -56,10 +56,10 @@ export function AppShell({
 
         {/* Desktop Topbar */}
         <div className="hidden lg:flex h-16 items-center justify-between px-6 border-b border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-surface-canvasDark/80 backdrop-blur-sm shrink-0 z-40">
-           <div className="flex items-center gap-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">
-              <Link href="/" className="hover:text-neutral-900 dark:hover:text-white transition">داشبورد</Link>
-              <span>/</span>
-              <span className="text-neutral-900 dark:text-white font-bold">اسناد من</span>
+           <div className="flex items-center gap-6 text-sm font-medium text-neutral-600 dark:text-neutral-400">
+              <Link href="/chat" className="hover:text-neutral-900 dark:hover:text-white transition">داشبورد</Link>
+              <Link href="/pricing" className="hover:text-neutral-900 dark:hover:text-white transition">پلن‌ها</Link>
+              <Link href="/support" className="hover:text-neutral-900 dark:hover:text-white transition">پشتیبانی</Link>
            </div>
            <div className="flex items-center gap-4">
              <ThemeToggle />

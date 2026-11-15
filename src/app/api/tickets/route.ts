@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { sendSms } from '@/lib/sms';
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -17,6 +18,20 @@ export async function POST(req: Request) {
   await supabase.from('ticket_messages').insert({
     ticket_id: ticket.id, sender_id: user.id, sender_role: 'user', message: description
   });
+
+  // 1. Notify User
+  if (user.phone) {
+    sendSms(user.phone, process.env.FARAZSMS_PATTERN_USER_NEW, { subject });
+  }
+  
+  // 2. Notify Admins
+  const adminPhones = (process.env.ADMIN_PHONE_NUMBERS || '').split(',').map(p => p.trim()).filter(Boolean);
+  for (const phone of adminPhones) {
+    sendSms(phone, process.env.FARAZSMS_PATTERN_ADMIN, { 
+      phone: user.phone || user.email || 'نامشخص', 
+      subject 
+    });
+  }
 
   return NextResponse.json({ ticket });
 }

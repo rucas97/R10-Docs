@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { DocwizeLogo } from '@/components/DocwizeLogo';
 import { User as UserIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -49,9 +50,9 @@ export default function LandingPage() {
           </button>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-neutral-600 dark:text-neutral-400">
-            <a href="#upload" className="hover:text-neutral-900 dark:hover:text-white transition">آپلود سند</a>
             <a href="#features" className="hover:text-neutral-900 dark:hover:text-white transition">امکانات</a>
-            <a href="#how-it-works" className="hover:text-neutral-900 dark:hover:text-white transition">مراحل کارکرد</a>
+            <Link href="/pricing" className="hover:text-neutral-900 dark:hover:text-white transition">پلن‌ها</Link>
+            <Link href="/support" className="hover:text-neutral-900 dark:hover:text-white transition">پشتیبانی</Link>
             <a href="#faq" className="hover:text-neutral-900 dark:hover:text-white transition">سوالات متداول</a>
           </nav>
 

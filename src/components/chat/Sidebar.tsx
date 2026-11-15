@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, MessageSquare, Loader2, Trash2, Pin, PinOff, FolderPlus, Folder, FolderOpen, ChevronDown, MoreVertical, Search, FolderInput, X } from 'lucide-react';
+import { Plus, MessageSquare, Loader2, Trash2, Pin, PinOff, FolderPlus, Folder, FolderOpen, ChevronDown, MoreVertical, Search, FolderInput, X, CreditCard, LifeBuoy } from 'lucide-react';
 import { ProfileMenu } from './ProfileMenu';
 import { DocwizeLogo } from '@/components/DocwizeLogo';
 
@@ -199,6 +199,14 @@ export function Sidebar({ user, chats: initialChats, folders: initialFolders, on
         )}
       </div>
 
+      <div className="px-3 pb-2 pt-2 border-t border-neutral-200 dark:border-neutral-800 flex flex-col gap-1">
+        <Link href="/pricing" className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition">
+          <CreditCard className="w-4 h-4" /> پلن و اشتراک
+        </Link>
+        <Link href="/support" className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition">
+          <LifeBuoy className="w-4 h-4" /> پشتیبانی
+        </Link>
+      </div>
       <div className="p-3 border-t border-neutral-200 dark:border-neutral-800 flex items-center gap-2">
         <ProfileMenu email={user.email} />
         <span className="text-xs font-semibold truncate flex-1 text-neutral-700 dark:text-neutral-300">{user.email}</span>

@@ -47,7 +47,7 @@ export function UserTicketChat({ ticket, initialMessages }: { ticket: any, initi
             {messages.map(m => (
               <div key={m.id} className={`flex flex-col ${m.sender_role === 'user' ? 'items-end' : 'items-start'}`}>
                 {m.sender_role === 'admin' && <span className="text-[11px] text-neutral-500 mb-1 mr-1">پشتیبانی</span>}
-                <div className={`max-w-[85%] p-4 rounded-2xl text-sm ${m.sender_role === 'user' ? 'bg-brand-cobalt text-white rounded-tr-sm' : 'bg-white dark:bg-[#1C1C1C] border border-neutral-200 dark:border-neutral-700 text-white rounded-tl-sm'}`}>
+                <div className={`max-w-[85%] p-4 rounded-2xl text-sm ${m.sender_role === 'user' ? 'bg-brand-cobalt text-white rounded-tr-sm' : 'bg-white dark:bg-[#1C1C1C] border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-white rounded-tl-sm'}`}>
                   {m.message}
                 </div>
                 <span className="text-[10px] text-neutral-500 mt-1" dir="ltr">{new Date(m.created_at).toLocaleTimeString()}</span>
@@ -57,7 +57,7 @@ export function UserTicketChat({ ticket, initialMessages }: { ticket: any, initi
 
           <div className="p-4 bg-surface-canvas dark:bg-surface-canvasDark border-t border-neutral-200 dark:border-neutral-800">
             <form onSubmit={handleSend} className="max-w-4xl mx-auto flex items-center gap-2 bg-white dark:bg-[#1A1A1A] border border-neutral-400 dark:border-neutral-600 rounded-3xl p-2">
-              <input value={input} onChange={e => setInput(e.target.value)} placeholder="پاسخ خود را بنویسید..." className="flex-1 bg-transparent outline-none px-3 text-sm text-white" />
+              <input value={input} onChange={e => setInput(e.target.value)} placeholder="پاسخ خود را بنویسید..." className="flex-1 bg-transparent outline-none px-3 text-sm text-neutral-900 dark:text-white" />
               <button type="submit" className="w-9 h-9 rounded-xl bg-gold-500 text-black flex items-center justify-center shrink-0"><Send className="w-4 h-4 -scale-x-100" /></button>
             </form>
           </div>

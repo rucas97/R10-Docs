@@ -67,7 +67,7 @@ export function ProfileMenu({ email, avatarUrl }: { email: string; avatarUrl?: s
           </div>
 
           <button
-            onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('r10_open_settings')); }}
+            onClick={() => { setOpen(false); router.push('/settings'); }}
             className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition"
           >
             <Settings className="w-3.5 h-3.5" />
