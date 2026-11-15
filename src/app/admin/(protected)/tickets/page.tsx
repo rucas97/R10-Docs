@@ -16,6 +16,7 @@ export default async function AdminTicketsPage() {
     <div>
       <h1 className="text-2xl font-black mb-6">مدیریت تیکت‌ها</h1>
       <div className="space-y-3">
+        {tickets?.length === 0 && <p className="text-neutral-500">هیچ تیکتی وجود ندارد.</p>}
         {tickets?.map(t => (
           <Link href={`/admin/tickets/${t.id}`} key={t.id} className="block bg-[#171717] border border-neutral-800 p-5 rounded-2xl hover:border-neutral-600 transition">
             <div className="flex justify-between items-start mb-2">

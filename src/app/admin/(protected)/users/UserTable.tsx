@@ -9,6 +9,7 @@ export function UserTable({ initialUsers }: { initialUsers: any[] }) {
     if (!confirm('آیا از حذف این کاربر مطمئن هستید؟ تمام اسناد و تیکت‌های او نیز حذف می‌شوند.')) return;
     const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
     if (res.ok) setUsers(users.filter(u => u.id !== id));
+    else alert('حذف ناموفق بود');
   };
 
   return (
