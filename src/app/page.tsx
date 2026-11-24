@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DocwizeLogo } from '@/components/DocwizeLogo';
+import { AppFooter } from '@/components/layout/AppFooter';
 import { User as UserIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
@@ -151,19 +152,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="mt-auto border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-surface-canvasDark py-8">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-neutral-500">
-          <div className="flex items-center gap-2 font-bold text-neutral-900 dark:text-neutral-200">
-            <DocwizeLogo className="w-5 h-5 text-gold-500" />
-            <span>Docwize • دستیار نسل جدید تحلیل اسناد</span>
-          </div>
-          <div className="flex items-center gap-6 text-sm">
-            <a href="#" className="hover:text-gold-500 transition">شرایط و قوانین</a>
-            <a href="#" className="hover:text-gold-500 transition">حریم خصوصی</a>
-            <a href="#" className="hover:text-gold-500 transition">پشتیبانی</a>
-          </div>
-        </div>
-      </footer>
+      <AppFooter />
     </div>
   );
 }

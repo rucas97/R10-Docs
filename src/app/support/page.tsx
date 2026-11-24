@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/AppHeader';
+import { AppFooter } from '@/components/layout/AppFooter';
 import { Loader2, MessageSquare, CheckCircle, PlusCircle, ArrowLeft } from 'lucide-react';
 import { SupportForm } from './SupportForm';
 
@@ -57,6 +58,7 @@ export default async function SupportPage() {
           <SupportForm />
         </div>
       </main>
+      <AppFooter />
     </div>
   );
 }

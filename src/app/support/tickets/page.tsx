@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { ArrowRight, Wrench, CreditCard, User, Bot, MessageSquare, CheckCircle } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
+import { AppFooter } from '@/components/layout/AppFooter';
 
 export default async function UserTicketsPage() {
   const supabase = await createClient();
@@ -36,6 +37,7 @@ export default async function UserTicketsPage() {
           ))}
         </div>
       </main>
+      <AppFooter />
     </div>
   );
 }

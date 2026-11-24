@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/AppHeader';
+import { AppFooter } from '@/components/layout/AppFooter';
 import { Check, X, MessageSquare } from 'lucide-react';
 
 export function PricingClient({ email }: { email: string }) {
@@ -82,6 +83,7 @@ export function PricingClient({ email }: { email: string }) {
           </button>
         </div>
       </main>
+      <AppFooter />
     </div>
   );
 }

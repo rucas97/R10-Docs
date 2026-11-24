@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePrefs, savePrefs } from '@/lib/preferences';
 import { AppHeader } from '@/components/layout/AppHeader';
+import { AppFooter } from '@/components/layout/AppFooter';
 import { User, CreditCard, Sliders, Shield, Bell, ChevronLeft, ArrowRight, Sun, Moon, Monitor, Check } from 'lucide-react';
 
 type Tab = 'profile' | 'subscription' | 'preferences' | 'security' | 'notifications';
@@ -221,6 +222,7 @@ export function SettingsClient({ email, phone }: { email: string; phone: string 
 
         </div>
       </main>
+      <AppFooter />
     </div>
   );
 }
