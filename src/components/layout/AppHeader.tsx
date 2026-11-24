@@ -19,6 +19,7 @@ export function AppHeader({ email }: { email: string }) {
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-neutral-600 dark:text-neutral-400">
           <Link href="/chat" className="hover:text-neutral-900 dark:hover:text-white transition">داشبورد</Link>
           <Link href="/pricing" className="hover:text-neutral-900 dark:hover:text-white transition">پلن‌ها</Link>
+          <Link href="/documents" className="hover:text-neutral-900 dark:hover:text-white transition">صفحه اسناد</Link>
           <Link href="/support" className="hover:text-neutral-900 dark:hover:text-white transition">پشتیبانی</Link>
         </nav>
 

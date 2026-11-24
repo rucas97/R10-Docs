@@ -1,0 +1,51 @@
+
+> r10-docs@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.27
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+
+<--- Last few GCs --->
+
+[3272:0000023CDCEDA000]    13242 ms: Scavenge 257.0 (322.9) -> 250.1 (358.6) MB, pooled: 0 MB, 370.77 / 0.00 ms  (average mu = 0.996, current mu = 0.995) allocation failure; 
+[3272:0000023CDCEDA000]    13869 ms: Scavenge 292.6 (358.6) -> 263.0 (380.1) MB, pooled: 0 MB, 146.60 / 0.00 ms  (average mu = 0.996, current mu = 0.995) allocation failure; 
+
+FATAL ERROR: Zone Allocation failed - process out of memory
+----- Native stack trace -----
+
+
+<--- Last few GCs --->
+
+[3272:0000023CDCEDA000]    13242 ms: Scavenge 257.0 (322.9) -> 250.1 (358.6) MB, pooled: 0 MB, 370.77 / 0.00 ms  (average mu = 0.996, current mu = 0.995) allocation failure; 
+[3272:0000023CDCEDA000]    13869 ms: Scavenge 292.6 (358.6) -> 263.0 (380.1) MB, pooled: 0 MB, 146.60 / 0.00 ms  (average mu = 0.996, current mu = 0.995) allocation failure; 
+
+FATAL ERROR: Zone Allocation failed - process out of memory
+----- Native stack trace -----
+
+ 1: 00007FF6984190C6 
+ 2: 00007FF698419604 
+ 3: 00007FF697023617 
+ 4: 00007FF69699B506 
+ 5: 00007FF697FCE029 
+ 6: 00007FF697FCD5CC 
+ 7: 00007FF697B25DCD 
+ 8: 00007FF697A5FE49 
+ 9: 00007FF697B26678 
+10: 00007FF697B2633C 
+11: 00007FF697B260A8 
+12: 00007FF697A60B17 
+13: 00007FF697A39D40 
+14: 00007FF697A36C3F 
+15: 00007FF697A3658D 
+16: 00007FF696F972CF 
+17: 00007FF696F5C31D 
+18: 00007FF696F5C015 
+19: 00007FF697822CEF 
+20: 00007FF698359BDB 
+21: 00007FF697078A26 
+22: 00007FF69875F483 
+23: 00007FF841927374 
+24: 00007FF84365CC91 
+Next.js build worker exited with code: 134 and signal: null

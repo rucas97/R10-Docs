@@ -43,11 +43,11 @@ export function PricingClient({ email }: { email: string }) {
             <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">برای کاربران جدی، پژوهشگران و متخصصان.</p>
             <div className="mb-6 flex flex-col">
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl sm:text-4xl font-black text-neutral-900 dark:text-white">۱۹۹,۰۰۰</span>
+                <span className="text-3xl sm:text-4xl font-black text-neutral-900 dark:text-white">۱,۰۰۰</span>
                 <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400">تومان / ماه</span>
               </div>
             </div>
-            <button className="w-full py-3 rounded-xl bg-gold-500 text-black font-bold text-sm hover:bg-gold-600 transition shadow-sm mb-8">ارتقا به حرفه‌ای</button>
+            <Link href="/checkout?plan=pro" className="block w-full py-3 rounded-xl bg-gold-500 text-black font-bold text-sm text-center hover:bg-gold-600 transition shadow-sm mb-8">ارتقا به حرفه‌ای</Link>
             <ul className="space-y-4 text-sm flex-1">
               <li className="flex items-start gap-2"><Check className="w-4 h-4 text-gold-500 shrink-0 mt-0.5" /><span className="text-neutral-700 dark:text-neutral-300 font-medium">۱۰۰۰ صفحه پردازش در ماه</span></li>
               <li className="flex items-start gap-2"><Check className="w-4 h-4 text-gold-500 shrink-0 mt-0.5" /><span className="text-neutral-700 dark:text-neutral-300">حداکثر حجم فایل ۵۰ مگابایت</span></li>
@@ -62,9 +62,9 @@ export function PricingClient({ email }: { email: string }) {
             <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-2">پلن سازمانی</h3>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">برای تیم‌های حقوقی، شرکت‌ها و دانشگاه‌ها.</p>
             <div className="mb-6 flex items-center h-[48px] sm:h-[56px]">
-              <span className="text-base sm:text-lg font-bold text-neutral-900 dark:text-white">با پشتیبانی ارتباط بگیرید</span>
+              <div className="flex items-baseline gap-1"><span className="text-3xl sm:text-4xl font-black text-neutral-900 dark:text-white">۱,۰۰۰</span><span className="text-sm font-medium text-neutral-500">تومان / ماه</span></div>
             </div>
-            <button className="w-full py-3 rounded-xl bg-gold-500 text-black font-bold text-sm hover:bg-gold-600 transition shadow-sm mb-8">درخواست دمو</button>
+            <Link href="/checkout?plan=enterprise" className="block w-full py-3 rounded-xl bg-gold-500 text-black font-bold text-sm text-center hover:bg-gold-600 transition shadow-sm mb-8">ارتقا به سازمانی</Link>
             <ul className="space-y-4 text-sm flex-1">
               <li className="flex items-start gap-2"><Check className="w-4 h-4 text-gold-500 shrink-0 mt-0.5" /><span className="text-neutral-700 dark:text-neutral-300">پردازش صفحات نامحدود</span></li>
               <li className="flex items-start gap-2"><Check className="w-4 h-4 text-gold-500 shrink-0 mt-0.5" /><span className="text-neutral-700 dark:text-neutral-300">حجم فایل نامحدود</span></li>
