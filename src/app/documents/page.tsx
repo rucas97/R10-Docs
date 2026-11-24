@@ -12,7 +12,7 @@ export default async function DocumentsPage() {
   // Fetch real data
   const { data: chats } = await supabase
     .from('chats')
-    .select('id, title, file_name, file_size, page_count, created_at, folder_id')
+    .select('id, title, file_name, file_size, page_count, created_at, updated_at, folder_id, primary_language')
     .order('created_at', { ascending: false });
 
   const { data: folders } = await supabase
