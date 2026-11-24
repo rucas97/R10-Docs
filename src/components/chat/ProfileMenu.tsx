@@ -53,6 +53,9 @@ export function ProfileMenu({ email }: { email: string }) {
           <Link href="/pricing" onClick={() => setOpen(false)} className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition">
             <CreditCard className="w-3.5 h-3.5" /> <span>پلن و اشتراک</span>
           </Link>
+          <Link href="/documents" onClick={() => setOpen(false)} className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition">
+            <FileText className="w-3.5 h-3.5" /> <span>اسناد من</span>
+          </Link>
 
           <Link href="/support" onClick={() => setOpen(false)} className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition">
             <LifeBuoy className="w-3.5 h-3.5" /> <span>پشتیبانی</span>
