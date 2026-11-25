@@ -24,7 +24,6 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
 
   const pdfUrl = chat.file_path ? `/api/pdf/${chat.id}` : null;
 
-  // Build a parent lookup: messageId → { role, content }
   const lookup: Record<string, { role: 'user' | 'assistant'; content: string }> = {};
   for (const m of (messages ?? [])) {
     lookup[m.id] = { role: m.role as 'user' | 'assistant', content: m.content };
@@ -39,12 +38,10 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
         pageCount: chat.page_count ?? 0,
         summary: chat.summary ?? '',
         primaryLanguage: (chat.primary_language as 'fa' | 'en') ?? 'en',
-        suggestedQuestions: Array.isArray(chat.suggested_questions)
-          ? (chat.suggested_questions as string[])
-          : [],
+        suggestedQuestions: Array.isArray(chat.suggested_questions) ? (chat.suggested_questions as string[]) : [],
         mindmap: chat.mindmap ?? null,
         analysis: chat.analysis ?? null,
-        pageTexts: Array.isArray(chat.page_texts) ? chat.page_texts : [],
+        pageTexts: Array.isArray(chat.page_texts) ? (chat.page_texts as string[]) : [],
       }}
       pdfUrl={pdfUrl}
       initialMessages={(messages ?? []).map((m) => ({

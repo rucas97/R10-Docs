@@ -2,12 +2,13 @@
 
 import { useState, useRef, useEffect, useMemo, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, Copy, Check, RefreshCw, MessageCircle, Reply, ThumbsUp, ThumbsDown, RotateCw } from 'lucide-react';
+import { FileText, Copy, Check, RefreshCw, MessageCircle, Reply, RotateCw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { extractCitations, toPersianNumber, type Citation } from '@/lib/citations';
 import { SourceModal } from './SourceModal';
-import { PdfViewer } from './PdfViewer';
+import { FileViewer } from './FileViewer';
 import { ChatInput } from './ChatInput';
+import { ChatHeader } from './ChatHeader';
 import { CommentSheet } from './CommentSheet';
 import { SummaryCard } from './SummaryCard';
 import { MindMapModal } from './MindMapModal';
@@ -15,7 +16,21 @@ import { AnalysisModal } from './analysis/AnalysisModal';
 import { DocwizeLogo } from '@/components/DocwizeLogo';
 
 type Msg = { id: string; role: 'user' | 'assistant'; content: string; replyToId?: string | null; };
-type ChatMeta = { id: string; title: string; fileName: string; pageCount: number; summary: string; primaryLanguage: 'fa' | 'en'; suggestedQuestions: string[]; mindmap: any; analysis: any; };
+
+/* FIXED CHATMETA INTERFACE */
+type ChatMeta = { 
+  id: string; 
+  title: string; 
+  fileName: string; 
+  pageCount: number; 
+  summary: string; 
+  primaryLanguage: 'fa' | 'en'; 
+  suggestedQuestions: string[]; 
+  mindmap: any; 
+  analysis: any; 
+  pageTexts: string[]; 
+};
+
 type Lookup = Record<string, { role: 'user' | 'assistant'; content: string }>;
 
 const MessageBubble = memo(function MessageBubble({ msg, lookup, onOpenSource, onRegenerate, onComment, onReply }: any) {
@@ -31,7 +46,7 @@ const MessageBubble = memo(function MessageBubble({ msg, lookup, onOpenSource, o
     <div className={`flex items-start gap-3 group ${isUser ? 'justify-start mt-6' : ''}`}>
       {!isUser && (
         <div className="w-8 h-8 flex items-center justify-center shrink-0 mt-0.5">
-          <DocwizeLogo className="w-7 h-7 text-gold-500" />
+          <DocwizeLogo className="w-7 h-7" />
         </div>
       )}
       
@@ -150,22 +165,11 @@ export function ChatPanel({ chat, pdfUrl, initialMessages, messageLookup }: { ch
 
   const chatColumn = (
     <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-      <div className="hidden xl:flex h-16 items-center justify-between px-6 border-b border-neutral-200/60 dark:border-neutral-800/60 bg-surface-canvas/80 dark:bg-surface-canvasDark/80 backdrop-blur-sm shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white dark:bg-surface-aiBubbleDark flex items-center justify-center text-neutral-700 dark:text-neutral-300 shadow-sm border border-neutral-200 dark:border-neutral-700">
-            <FileText className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-neutral-900 dark:text-white">{chat.fileName}</p>
-            <p className="text-[11px] text-neutral-500">{toPersianNumber(chat.pageCount)} صفحه</p>
-          </div>
-        </div>
-      </div>
-
+      <ChatHeader chat={chat} />
       <SummaryCard chatId={chat.id} summary={chat.summary} />
 
-      <div className="flex-1 overflow-y-auto px-3 xl:px-6 py-6">
-        <div className="max-w-3xl mx-auto space-y-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-6">
+        <div className="max-w-3xl mx-auto space-y-5">
           {messages.map((m) => (
             <MessageBubble key={m.id} msg={m} lookup={lookup} onOpenSource={openSource} onRegenerate={regenerate} onComment={(msg: any) => setCommentFor(msg.id)} onReply={(msg: any) => setReplyTarget({ id: msg.id, content: msg.content, role: msg.role })} />
           ))}
@@ -179,7 +183,15 @@ export function ChatPanel({ chat, pdfUrl, initialMessages, messageLookup }: { ch
 
   const readerColumn = (
     <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-      <PdfViewer chatId={chat.id} pageCount={chat.pageCount} currentPage={currentPage} onPageChange={setCurrentPage} primaryLanguage={chat.primaryLanguage} />
+      <FileViewer
+        fileUrl={pdfUrl}
+        fileName={chat.fileName}
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
+        pageCount={chat.pageCount}
+        pageTexts={chat.pageTexts}
+        highlightSnippet={modal ? modal.citations[modal.index].snippet : ''}
+      />
     </div>
   );
 
@@ -202,9 +214,4 @@ export function ChatPanel({ chat, pdfUrl, initialMessages, messageLookup }: { ch
       {showAnalysis && <AnalysisModal chatId={chat.id} chatTitle={chat.fileName} initial={chat.analysis} onClose={() => setShowAnalysis(false)} />}
     </>
   );
-}
-
-function GlobalSettingsListener({ onOpen }: { onOpen: () => void }) {
-  useEffect(() => { const handler = () => onOpen(); window.addEventListener('r10_open_settings', handler); return () => window.removeEventListener('r10_open_settings', handler); }, [onOpen]);
-  return null;
 }
