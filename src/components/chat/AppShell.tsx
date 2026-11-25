@@ -16,7 +16,13 @@ type Chat = {
   pinned_at: string | null;
   folder_id: string | null;
 };
-type FolderT = { id: string; name: string; created_at: string };
+
+type FolderT = { 
+  id: string; 
+  name: string; 
+  created_at: string; 
+  is_pinned: boolean | null; 
+};
 
 export function AppShell({
   user, chats, folders, children,
@@ -58,6 +64,7 @@ export function AppShell({
         <div className="hidden lg:flex h-16 items-center justify-between px-6 border-b border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-surface-canvasDark/80 backdrop-blur-sm shrink-0 z-40">
            <div className="flex items-center gap-6 text-sm font-medium text-neutral-600 dark:text-neutral-400">
               <Link href="/chat" className="hover:text-neutral-900 dark:hover:text-white transition">داشبورد</Link>
+              <Link href="/documents" className="hover:text-neutral-900 dark:hover:text-white transition">صفحه اسناد</Link>
               <Link href="/pricing" className="hover:text-neutral-900 dark:hover:text-white transition">پلن‌ها</Link>
               <Link href="/support" className="hover:text-neutral-900 dark:hover:text-white transition">پشتیبانی</Link>
            </div>
