@@ -20,6 +20,15 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
   const [query, setQuery] = useState('');
   const [selectedDoc, setSelectedDoc] = useState<Chat | null>(null);
 
+  const formatSize = (bytes: number) => {
+    if (!bytes || bytes === 0) return '۰ KB';
+    const kb = bytes / 1024;
+    if (kb < 1024) return `${kb.toFixed(1)} KB`;
+    return `${(kb / 1024).toFixed(2)} MB`;
+  };
+
+
+
   const filtered = chats.filter(c => 
     (c.file_name || c.title || '').toLowerCase().includes(query.toLowerCase())
   );
@@ -29,14 +38,7 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
   const totalSizeFormatted = formatSize(totalSizeBytes);
   const totalPages = chats.reduce((acc, c) => acc + (c.page_count || 0), 0);
 
-  const formatSize = (bytes: number) => {
-    if (!bytes || bytes === 0) return '۰ KB';
-    const kb = bytes / 1024;
-    if (kb < 1024) return `${kb.toFixed(1)} KB`;
-    return `${(kb / 1024).toFixed(2)} MB`;
-  };
-
-  const formatDate = (dateStr: string) => {
+    const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
     return d.toLocaleDateString('fa-IR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
