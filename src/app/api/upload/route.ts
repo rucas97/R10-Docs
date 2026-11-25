@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import mammoth from 'mammoth';
 import * as xlsx from 'xlsx';
-import { parseOfficeAsync } from 'officeparser';
+import { parseOffice } from 'officeparser';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
       totalPages = workbook.SheetNames.length;
     } 
     else if (ext === 'pptx') {
-      const text = await parseOfficeAsync(Buffer.from(bytes));
+      const text = await parseOffice(Buffer.from(bytes));
       documentText = text.slice(0, 200_000);
       pageTexts = [documentText];
       totalPages = 1; // Estimate
