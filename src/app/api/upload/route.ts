@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     let totalPages = 1;
     let documentText = '';
 
-    // Extract Text based on file type
+    // 1. PDF Parsing
     if (ext === 'pdf') {
       const { extractText, getDocumentProxy } = await import('unpdf');
       const pdf = await getDocumentProxy(uint8);
@@ -45,43 +45,55 @@ export async function POST(req: NextRequest) {
       }
       documentText = pageTexts.join('\n\n---\n\n').slice(0, 200_000);
     } 
+    // 2. Word Parsing
     else if (ext === 'docx') {
       const result = await mammoth.extractRawText({ buffer: Buffer.from(bytes) });
       documentText = result.value.slice(0, 200_000);
       pageTexts = [documentText];
-      totalPages = Math.ceil(documentText.length / 2000) || 1; // Estimate pages
+      totalPages = Math.max(1, Math.ceil(documentText.length / 2000)); 
     } 
+    // 3. Excel Parsing
     else if (ext === 'xlsx') {
       const workbook = xlsx.read(bytes, { type: 'buffer' });
       let text = '';
       workbook.SheetNames.forEach(sheetName => {
         text += `=== Sheet: ${sheetName} ===\n`;
-        text += xlsx.utils.sheet_to_txt(workbook.Sheets[sheetName]);
+        text += xlsx.utils.sheet_to_csv(workbook.Sheets[sheetName]); // Safe string conversion
         text += '\n\n';
       });
       documentText = text.slice(0, 200_000);
       pageTexts = [documentText];
       totalPages = workbook.SheetNames.length;
     } 
+    // 4. PowerPoint Parsing
     else if (ext === 'pptx') {
-      const text = await parseOffice(Buffer.from(bytes));
+      const ast = await parseOffice(Buffer.from(bytes));
+      // Safely extract text from AST
+      let text = '';
+      if (typeof ast === 'string') {
+        text = ast;
+      } else if (ast && typeof (ast as any).toText === 'function') {
+        text = (ast as any).toText();
+      } else {
+        text = JSON.stringify(ast);
+      }
       documentText = text.slice(0, 200_000);
       pageTexts = [documentText];
-      totalPages = 1; // Estimate
+      totalPages = 1;
     }
+    // 5. Image Parsing (Handled by Gemini Vision in chat)
     else if (['jpg', 'jpeg', 'png'].includes(ext)) {
-      // For images, we just pass a placeholder text. 
-      // Gemini Vision will be used in the chat API to actually read the image.
       documentText = "این یک تصویر است. لطفاً برای تحلیل آن سوال بپرسید.";
       pageTexts = [documentText];
       totalPages = 1;
     }
 
+    // Create DB Row
     const { data: chat, error: insertErr } = await supabase
       .from('chats')
       .insert({
         user_id: user.id,
-        title: file.name.replace(/\.[^/.]+$/, ""), // Remove extension for title
+        title: file.name.replace(/\.[^/.]+$/, ""), 
         file_name: file.name,
         page_count: totalPages,
         document_text: documentText,
@@ -94,10 +106,10 @@ export async function POST(req: NextRequest) {
     if (insertErr || !chat) throw new Error(insertErr?.message || 'Insert failed');
     const chatId = chat.id;
 
-    // Upload File to Storage
+    // Upload to Storage
     const filePath = `${user.id}/${chatId}.${ext}`;
     const { error: upErr } = await supabase.storage
-      .from('pdfs') // We reuse the pdfs bucket for all files
+      .from('pdfs') 
       .upload(filePath, uint8, { contentType: file.type, upsert: true });
 
     if (upErr) {
