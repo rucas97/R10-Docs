@@ -78,14 +78,17 @@ export async function POST(req: NextRequest) {
     
     // Check if the file is an image for Vision API
     let imagePart = null;
-    if (chat.document_text === "این یک تصویر است. لطفاً برای تحلیل آن سوال بپرسید." && chat.file_path) {
+    const isImage = chat.file_name?.match(/\.(jpg|jpeg|png)$/i);
+    
+    if (isImage && chat.file_path) {
+      console.log('[chat] Downloading image for Vision API');
       const { data: fileData } = await supabase.storage.from('pdfs').download(chat.file_path);
       if (fileData) {
         const buffer = await fileData.arrayBuffer();
         imagePart = {
           inlineData: {
             data: Buffer.from(buffer).toString("base64"),
-            mimeType: chat.file_path.endsWith('png') ? "image/png" : "image/jpeg"
+            mimeType: chat.file_name?.toLowerCase().endsWith('png') ? "image/png" : "image/jpeg"
           }
         };
       }

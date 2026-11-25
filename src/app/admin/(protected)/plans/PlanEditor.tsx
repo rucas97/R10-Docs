@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Save, Loader2, Check } from 'lucide-react';
+import { Save, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export function PlanEditor({ initialPlans }: { initialPlans: any[] }) {
@@ -28,6 +28,17 @@ export function PlanEditor({ initialPlans }: { initialPlans: any[] }) {
     }));
   };
 
+  const toggleFormat = (planId: string, format: string) => {
+    setPlans(plans.map(p => {
+      if (p.id === planId) {
+        const current = p.feature_flags?.formats || ['pdf'];
+        const next = current.includes(format) ? current.filter((f: string) => f !== format) : [...current, format];
+        return { ...p, feature_flags: { ...p.feature_flags, formats: next } };
+      }
+      return p;
+    }));
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {plans.map(p => (
@@ -48,6 +59,15 @@ export function PlanEditor({ initialPlans }: { initialPlans: any[] }) {
           </div>
 
           <div className="space-y-3 mb-6">
+            <p className="text-xs font-bold text-gold-500 mb-2">فرمت‌های مجاز</p>
+            {['pdf', 'docx', 'xlsx', 'pptx', 'image'].map(fmt => (
+              <label key={fmt} className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={(p.feature_flags?.formats || ['pdf']).includes(fmt)} onChange={() => toggleFormat(p.id, fmt)} className="w-4 h-4 accent-gold-500" />
+                <span className="text-xs text-neutral-300 uppercase">{fmt}</span>
+              </label>
+            ))}
+            
+            <p className="text-xs font-bold text-gold-500 mt-4 mb-2">ویژگی‌ها</p>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={p.feature_flags?.ocr || false} onChange={e => updateFeature(p.id, 'ocr', e.target.checked)} className="w-4 h-4 accent-gold-500" />
               <span className="text-xs text-neutral-300">خوانش دست‌نویس (OCR)</span>
@@ -56,12 +76,8 @@ export function PlanEditor({ initialPlans }: { initialPlans: any[] }) {
               <input type="checkbox" checked={p.feature_flags?.priority_support || false} onChange={e => updateFeature(p.id, 'priority_support', e.target.checked)} className="w-4 h-4 accent-gold-500" />
               <span className="text-xs text-neutral-300">پشتیبانی اولویت‌دار</span>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={p.feature_flags?.api_access || false} onChange={e => updateFeature(p.id, 'api_access', e.target.checked)} className="w-4 h-4 accent-gold-500" />
-              <span className="text-xs text-neutral-300">دسترسی به API اختصاصی</span>
-            </label>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-neutral-300">حداکثر صفحات در ماه:</span>
+              <span className="text-xs text-neutral-300">حداکثر صفحات:</span>
               <input type="number" value={p.feature_flags?.max_pages || 50} onChange={e => updateFeature(p.id, 'max_pages', parseInt(e.target.value))} className="w-20 bg-[#0A0A0A] border border-[#333] text-white rounded-lg px-2 py-1 text-xs outline-none" />
             </div>
           </div>

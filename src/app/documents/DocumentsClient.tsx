@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { FileText, Search, Folder, Plus, HardDrive, MessageSquare, Layers, X, Info } from 'lucide-react';
+import { FileText, Search, Folder, Plus, HardDrive, MessageSquare, Layers, X, Info, Image as ImageIcon, FileSpreadsheet, Presentation } from 'lucide-react';
 
 type Chat = {
   id: string;
@@ -101,7 +101,14 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
           return (
             <div key={chat.id} onClick={() => setSelectedDoc(chat)} className="bg-white dark:bg-[#1E1E1E] border border-neutral-300 dark:border-neutral-700 rounded-2xl p-4 flex flex-col group relative shadow-sm cursor-pointer hover:border-brand-cobalt dark:hover:border-brand-blue transition-colors">
               <div className="flex items-start justify-between mb-3">
-                <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center"><FileText className="w-5 h-5" /></div>
+                {(() => {
+                const ext = chat.file_name.split('.').pop()?.toLowerCase();
+                if (ext === 'pdf') return <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center"><FileText className="w-5 h-5" /></div>;
+                if (['jpg','jpeg','png'].includes(ext || '')) return <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center"><ImageIcon className="w-5 h-5" /></div>;
+                if (ext === 'xlsx') return <div className="w-10 h-10 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center"><FileSpreadsheet className="w-5 h-5" /></div>;
+                if (ext === 'pptx') return <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center"><Presentation className="w-5 h-5" /></div>;
+                return <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center"><FileText className="w-5 h-5" /></div>;
+              })()}
               </div>
               <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-1 truncate" title={chat.file_name}>{chat.file_name}</h3>
               <div className="flex flex-col gap-0.5 mb-4">
@@ -131,9 +138,14 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
             </div>
             <div className="sticky top-0 bg-white/95 dark:bg-[#1A1A1A]/95 backdrop-blur-md px-5 py-4 border-b border-neutral-100 dark:border-neutral-800 flex items-start justify-between z-10 sm:rounded-t-3xl">
               <div className="flex items-start gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0 mt-0.5">
-                  <FileText className="w-5 h-5" />
-                </div>
+                {(() => {
+                  const ext = selectedDoc.file_name.split('.').pop()?.toLowerCase();
+                  if (ext === 'pdf') return <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0 mt-0.5"><FileText className="w-5 h-5" /></div>;
+                  if (['jpg','jpeg','png'].includes(ext || '')) return <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 mt-0.5"><ImageIcon className="w-5 h-5" /></div>;
+                  if (ext === 'xlsx') return <div className="w-10 h-10 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center shrink-0 mt-0.5"><FileSpreadsheet className="w-5 h-5" /></div>;
+                  if (ext === 'pptx') return <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0 mt-0.5"><Presentation className="w-5 h-5" /></div>;
+                  return <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 mt-0.5"><FileText className="w-5 h-5" /></div>;
+                })()}
                 <div className="flex flex-col min-w-0">
                   <h3 className="text-base font-bold text-neutral-900 dark:text-white truncate">{selectedDoc.file_name}</h3>
                   <div className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 mt-1">
