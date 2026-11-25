@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Vazirmatn } from "next/font/google";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/react";
 
 const vazirmatn = Vazirmatn({
   subsets: ["arabic"],
@@ -25,7 +26,7 @@ export const viewport: Viewport = {
 const themeScript = `
 (function() {
   try {
-    var stored = localStorage.getItem('r10_theme');
+    var stored = localStorage.getItem('docwize_theme');
     var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     if (stored === 'dark' || (!stored && prefersDark)) {
       document.documentElement.classList.add('dark');
@@ -49,7 +50,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="min-h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 selection:bg-neutral-1000 selection:text-white transition-colors duration-300">
+      <body className="min-h-full flex flex-col bg-neutral-50 dark:bg-[#0A0A0A] text-neutral-900 dark:text-neutral-100 selection:bg-gold-500 selection:text-black transition-colors duration-300">
         {children}
         <Analytics />
       </body>
