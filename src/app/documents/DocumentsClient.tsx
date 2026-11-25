@@ -26,8 +26,15 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
 
   const totalFiles = chats.length;
   const totalSizeBytes = chats.reduce((acc, c) => acc + (Number(c.file_size) || 0), 0);
-  const totalSizeMB = (totalSizeBytes / (1024 * 1024)).toFixed(1);
+  const totalSizeFormatted = formatSize(totalSizeBytes);
   const totalPages = chats.reduce((acc, c) => acc + (c.page_count || 0), 0);
+
+  const formatSize = (bytes: number) => {
+    if (!bytes || bytes === 0) return '۰ KB';
+    const kb = bytes / 1024;
+    if (kb < 1024) return `${kb.toFixed(1)} KB`;
+    return `${(kb / 1024).toFixed(2)} MB`;
+  };
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -71,7 +78,7 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
         </div>
         <div className="bg-white dark:bg-[#1E1E1E] border border-neutral-200 dark:border-neutral-700 rounded-2xl p-4 flex flex-col justify-center shadow-sm">
           <span className="text-xs font-semibold text-neutral-500 mb-1">فضای مصرفی</span>
-          <div className="flex items-end gap-2"><span className="text-2xl font-black text-neutral-900 dark:text-white" dir="ltr">{totalSizeMB} MB</span><HardDrive className="w-4 h-4 text-neutral-400 mb-1" /></div>
+          <div className="flex items-end gap-2"><span className="text-2xl font-black text-neutral-900 dark:text-white" dir="ltr">{totalSizeFormatted}</span><HardDrive className="w-4 h-4 text-neutral-400 mb-1" /></div>
         </div>
         <div className="bg-white dark:bg-[#1E1E1E] border border-neutral-200 dark:border-neutral-700 rounded-2xl p-4 flex flex-col justify-center shadow-sm">
           <span className="text-xs font-semibold text-neutral-500 mb-1">گفتگوهای فعال</span>
@@ -102,7 +109,7 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
               </div>
               <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-1 truncate" title={chat.file_name}>{chat.file_name}</h3>
               <div className="flex flex-col gap-0.5 mb-4">
-                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 dir-ltr text-right">{((Number(chat.file_size) || 0)/(1024*1024)).toFixed(1)} MB • {chat.page_count} صفحه</p>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 dir-ltr text-right">{formatSize(Number(chat.file_size))} • {chat.page_count} صفحه</p>
                 <p className="text-[11px] text-neutral-400 dark:text-neutral-500">{formatDate(chat.created_at)}</p>
               </div>
               <div className="mt-auto pt-3 border-t border-neutral-200 dark:border-neutral-800 flex items-center justify-between">
@@ -175,7 +182,7 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-[11px] text-neutral-500">حجم فایل</span>
-                  <span className="text-sm font-normal text-neutral-900 dark:text-white dir-ltr text-right">{((Number(selectedDoc.file_size) || 0)/(1024*1024)).toFixed(1)} MB</span>
+                  <span className="text-sm font-normal text-neutral-900 dark:text-white dir-ltr text-right">{formatSize(Number(selectedDoc.file_size))}</span>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-[11px] text-neutral-500">تعداد صفحات</span>

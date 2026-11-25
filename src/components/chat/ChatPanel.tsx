@@ -23,7 +23,7 @@ const MessageBubble = memo(function MessageBubble({ msg, lookup, onOpenSource, o
   const [copied, setCopied] = useState(false);
   const parsed = useMemo(() => (isUser ? { content: msg.content, citations: [] as Citation[] } : extractCitations(msg.content)), [msg.content, isUser]);
   const replyParent = msg.replyToId ? lookup[msg.replyToId] : null;
-  const isStreaming = !isUser && !parsed.content;
+  const isStreaming = !isUser && !parsed.content && msg.id.startsWith('local-');
 
   const handleCopy = async () => { await navigator.clipboard.writeText(parsed.content); setCopied(true); setTimeout(() => setCopied(false), 1500); };
 

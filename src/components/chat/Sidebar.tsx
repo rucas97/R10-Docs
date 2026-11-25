@@ -19,6 +19,12 @@ export function Sidebar({ user, chats: initialChats, folders: initialFolders, on
   const [tab, setTab] = useState<'chats' | 'folders'>('chats');
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
+  const handlePinFolder = async (folderId: string) => {
+    setBusyId(folderId);
+    await fetch(`/api/folders/${folderId}/pin`, { method: 'POST' });
+    setBusyId(null);
+    router.refresh();
+  };
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [menu, setMenu] = useState<{ chatId: string; x: number; y: number } | null>(null);
   const [moveModal, setMoveModal] = useState<string | null>(null);
@@ -102,7 +108,7 @@ export function Sidebar({ user, chats: initialChats, folders: initialFolders, on
           {c.is_pinned ? <Pin className="w-4 h-4 shrink-0 text-gold-500 fill-gold-500" /> : <MessageSquare className="w-4 h-4 shrink-0" />}
           <span className="text-xs truncate flex-1">{c.title}</span>
         </Link>
-        <div className="absolute left-1.5 top-3 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition">
+        <div className="absolute left-1.5 top-3 flex items-center gap-0.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition">
           {variant === 'in-folder' ? (
             <button onClick={(e) => { e.preventDefault(); handleDelete(c.id); }} className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">
               <Trash2 className="w-3.5 h-3.5" />
@@ -187,9 +193,12 @@ export function Sidebar({ user, chats: initialChats, folders: initialFolders, on
               return (
                 <div key={f.id} className="mb-1">
                   <button onClick={() => setExpanded(e => ({ ...e, [f.id]: !isOpen }))} className="w-full flex items-center gap-2 px-2 py-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition">
-                    {isOpen ? <FolderOpen className="w-4 h-4 text-gold-500 shrink-0" /> : <Folder className="w-4 h-4 text-gold-500 shrink-0" />}
+                    {isOpen ? {f.is_pinned ? <Pin className="w-4 h-4 text-gold-500 fill-gold-500 shrink-0" /> : <FolderOpen className="w-4 h-4 text-gold-500 shrink-0" />} : {f.is_pinned ? <Pin className="w-4 h-4 text-gold-500 fill-gold-500 shrink-0" /> : <Folder className="w-4 h-4 text-gold-500 shrink-0" />}}
                     <span className="text-xs font-bold text-neutral-700 dark:text-neutral-200 truncate flex-1 text-right">{f.name}</span>
-                    <span className="text-[10px] text-neutral-400">{folderChats.length}</span>
+                    <div className="flex items-center gap-1">
+<button onClick={(e) => { e.preventDefault(); handlePinFolder(f.id); }} className="p-1 hover:text-gold-500"><Pin className="w-3 h-3" /></button>
+<span className="text-[10px] text-neutral-400">{folderChats.length}</span>
+</div>
                   </button>
                   {isOpen && folderChats.length > 0 && <ul className="space-y-0.5 ps-3">{folderChats.map(c => renderChatRow(c, 'in-folder'))}</ul>}
                 </div>
