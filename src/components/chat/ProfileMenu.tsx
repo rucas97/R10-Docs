@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Settings, LogOut, User, LifeBuoy, CreditCard, Loader2 } from 'lucide-react';
+import { Settings, LogOut, User, LifeBuoy, CreditCard, Loader2, FileText } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 export function ProfileMenu({ email }: { email: string }) {
