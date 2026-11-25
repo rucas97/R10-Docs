@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     const { data: chat } = await supabase
       .from('chats')
-      .select('id, document_text, summary, page_texts')
+      .select('id, document_text, summary, page_texts, file_path')
       .eq('id', chatId)
       .single();
     if (!chat) return NextResponse.json({ error: 'Chat not found' }, { status: 404 });
