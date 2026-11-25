@@ -12,36 +12,15 @@ import {
 import { ProfileMenu } from './ProfileMenu';
 import { DocwizeLogo } from '@/components/DocwizeLogo';
 
-type Chat = {
-  id: string;
-  title: string;
-  updated_at: string;
-  is_pinned: boolean | null;
-  pinned_at: string | null;
-  folder_id: string | null;
-};
-type FolderT = {
-  id: string;
-  name: string;
-  created_at: string;
-  is_pinned: boolean | null; /* ADDED MISSING PROPERTY */
-};
+type Chat = { id: string; title: string; updated_at: string; is_pinned: boolean | null; pinned_at: string | null; folder_id: string | null; };
+type FolderT = { id: string; name: string; created_at: string; is_pinned: boolean | null; };
 
-type Tab = 'chats' | 'folders';
-
-export function Sidebar({
-  user, chats: initialChats, folders: initialFolders, onClose,
-}: {
-  user: { email: string; id: string };
-  chats: Chat[];
-  folders: FolderT[];
-  onClose: () => void;
-}) {
+export function Sidebar({ user, chats: initialChats, folders: initialFolders, onClose }: { user: { email: string; id: string }; chats: Chat[]; folders: FolderT[]; onClose: () => void; }) {
   const pathname = usePathname();
   const router = useRouter();
   const [chats, setChats] = useState(initialChats);
   const [folders, setFolders] = useState(initialFolders);
-  const [tab, setTab] = useState<Tab>('chats');
+  const [tab, setTab] = useState<'chats' | 'folders'>('chats');
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -55,7 +34,6 @@ export function Sidebar({
   useEffect(() => { setChats(initialChats); }, [initialChats]);
   useEffect(() => { setFolders(initialFolders); }, [initialFolders]);
 
-  // --- Actions ---
   const handleDeleteChat = async (id: string) => {
     setMenu(null);
     if (!confirm('این گفتگو حذف شود؟')) return;
@@ -77,8 +55,7 @@ export function Sidebar({
     setChats((c) => c.map((x) => x.id === chat.id ? { ...x, is_pinned: !chat.is_pinned } : x));
     const res = await fetch(`/api/chats/${chat.id}/pin`, { method });
     setBusyId(null);
-    if (!res.ok) { setChats(prev); }
-    else router.refresh();
+    if (!res.ok) { setChats(prev); } else router.refresh();
   };
 
   const handlePinFolder = async (folderId: string) => {
@@ -86,27 +63,16 @@ export function Sidebar({
     const prev = folders;
     const folder = folders.find(f => f.id === folderId);
     if (!folder) return;
-    
     setFolders(f => f.map(x => x.id === folderId ? { ...x, is_pinned: !x.is_pinned } : x));
-    
     const res = await fetch(`/api/folders/${folderId}/pin`, { method: 'POST' });
     setBusyId(null);
-    if (!res.ok) {
-      setFolders(prev);
-      alert('عملیات ناموفق بود');
-    } else {
-      router.refresh();
-    }
+    if (!res.ok) { setFolders(prev); alert('عملیات ناموفق بود'); } else { router.refresh(); }
   };
 
   const createFolder = async (): Promise<FolderT | null> => {
     const name = prompt('نام پوشه جدید:');
     if (!name || !name.trim()) return null;
-    const res = await fetch('/api/folders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name.trim() }),
-    });
+    const res = await fetch('/api/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name.trim() }), });
     if (!res.ok) return null;
     const { folder } = await res.json();
     setFolders((f) => [...f, folder]);
@@ -119,13 +85,8 @@ export function Sidebar({
     setMoveModal(null);
     const prev = chats;
     setChats((c) => c.map((x) => x.id === chatId ? { ...x, folder_id: folderId } : x));
-    const res = await fetch(`/api/chats/${chatId}/folder`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ folderId }),
-    });
-    if (!res.ok) setChats(prev);
-    else router.refresh();
+    const res = await fetch(`/api/chats/${chatId}/folder`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folderId }), });
+    if (!res.ok) setChats(prev); else router.refresh();
   };
 
   const confirmDeleteFolder = async () => {
@@ -150,7 +111,8 @@ export function Sidebar({
 
   const filteredChats = chats.filter((c) => c.title.toLowerCase().includes(query.toLowerCase()));
   const pinnedChats = filteredChats.filter((c) => c.is_pinned);
-  const looseChats = filteredChats.filter((c) => !c.is_pinned && !c.folder_id);
+  // FIX: Show ALL chats in the chats tab, even if they have a folder_id
+  const looseChats = filteredChats.filter((c) => !c.is_pinned);
   const pinnedFolders = folders.filter(f => f.is_pinned);
   const regularFolders = folders.filter(f => !f.is_pinned);
 
@@ -162,7 +124,7 @@ export function Sidebar({
           {c.is_pinned ? <Pin className="w-4 h-4 shrink-0 text-gold-500 fill-gold-500" /> : <MessageSquare className="w-4 h-4 shrink-0" />}
           <span className="text-xs truncate flex-1">{c.title}</span>
         </Link>
-        <div className="absolute left-1.5 top-3 flex items-center gap-0.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition">
+        <div className="absolute left-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center gap-0.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition">
           {variant === 'in-folder' ? (
             <button onClick={(e) => { e.preventDefault(); handleDeleteChat(c.id); }} className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">
               <Trash2 className="w-3.5 h-3.5" />
@@ -191,11 +153,11 @@ export function Sidebar({
             }
             <span className="text-xs font-bold text-neutral-700 dark:text-neutral-200 truncate flex-1">{f.name}</span>
           </button>
-          <div className="flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition">
-            <button onClick={(e) => { e.preventDefault(); handlePinFolder(f.id); }} className={`p-1 transition ${f.is_pinned ? 'text-gold-500' : 'text-neutral-400 hover:text-gold-500'}`}>
+          <div className="flex items-center gap-1 justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition">
+            <button onClick={(e) => { e.preventDefault(); handlePinFolder(f.id); }} className={`p-1 flex items-center justify-center transition ${f.is_pinned ? 'text-gold-500' : 'text-neutral-400 hover:text-gold-500'}`}>
               <Pin className="w-3.5 h-3.5" />
             </button>
-            <button onClick={(e) => { e.preventDefault(); setDeleteFolderModal(f.id); setAlsoDeleteChats(false); }} className="p-1 text-neutral-400 hover:text-rose-500">
+            <button onClick={(e) => { e.preventDefault(); setDeleteFolderModal(f.id); setAlsoDeleteChats(false); }} className="p-1 flex items-center justify-center text-neutral-400 hover:text-rose-500">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -293,7 +255,6 @@ export function Sidebar({
         <span className="text-xs font-semibold truncate flex-1 text-neutral-700 dark:text-neutral-300">{user.email}</span>
       </div>
 
-      {/* Menus */}
       {menu && mounted && createPortal(
         <>
           <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setMenu(null)} />

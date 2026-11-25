@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Users, CreditCard, FileText, CheckCircle } from 'lucide-react';
+import { SalesChart } from './SalesChart';
 
 export default async function AdminDashboard() {
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -7,10 +8,27 @@ export default async function AdminDashboard() {
   const [{ count: userCount }, { count: ticketCount }, { data: transactions }] = await Promise.all([
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
     supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'progress'),
-    supabase.from('transactions').select('amount').eq('status', 'success')
+    supabase.from('transactions').select('amount, created_at').eq('status', 'success')
   ]);
 
   const totalRevenue = transactions?.reduce((acc, t) => acc + t.amount, 0) || 0;
+  
+  // Process data for chart (Last 7 days)
+  const chartData = [];
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toISOString().split('T')[0];
+    
+    const dayTrx = transactions?.filter(t => t.created_at.startsWith(dateStr)) || [];
+    const dayRevenue = dayTrx.reduce((acc, t) => acc + t.amount, 0);
+    
+    chartData.push({
+      name: date.toLocaleDateString('fa-IR', { month: 'short', day: 'numeric' }),
+      revenue: dayRevenue,
+      sales: dayTrx.length
+    });
+  }
 
   const stats = [
     { label: 'کاربران کل', value: userCount || 0, icon: Users, color: 'text-blue-500' },
@@ -36,14 +54,10 @@ export default async function AdminDashboard() {
         ))}
       </div>
       
-      <div className="bg-[#171717] border border-[#333] rounded-2xl p-6 h-80 flex flex-col justify-center items-center text-neutral-500">
-        <LineChartIcon />
-        <p className="mt-4 text-sm">نمودار درآمد به زودی اینجا اضافه می‌شود...</p>
+      <div className="bg-[#171717] border border-[#333] rounded-2xl p-6">
+        <h2 className="text-sm font-bold text-white mb-4">نمودار فروش ۷ روز اخیر</h2>
+        <SalesChart data={chartData} />
       </div>
     </div>
   );
-}
-
-function LineChartIcon() {
-  return <svg className="w-16 h-16 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>;
 }

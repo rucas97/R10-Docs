@@ -51,6 +51,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 selection:bg-neutral-1000 selection:text-white transition-colors duration-300">
         {children}
+        <Analytics />
       </body>
     </html>
   );

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { User, Mail, Calendar, ShieldAlert, CheckCircle, Save, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-export function UserDetailClient({ user }: { user: any }) {
+export function UserDetailClient({ user, logs }: { user: any, logs: any[] }) {
   const router = useRouter();
   const [name, setName] = useState(user.user_metadata?.full_name || '');
   const [loading, setLoading] = useState(false);
@@ -86,14 +86,22 @@ export function UserDetailClient({ user }: { user: any }) {
           </form>
         </div>
 
-        {/* Error Logs Placeholder */}
+        {/* Live Activity Logs */}
         <div className="bg-[#171717] border border-neutral-800 rounded-3xl p-6 sm:p-8">
-          <h2 className="text-sm font-bold text-white mb-4">لاگ خطاهای اخیر (دمو)</h2>
-          <div className="text-xs font-mono text-neutral-500 bg-[#0A0A0A] p-4 rounded-xl overflow-x-auto" dir="ltr">
-            [2026-11-15 10:23:45] WARN: PDF parse took longer than expected.<br/>
-            [2026-11-14 18:12:01] ERROR: Failed to connect to LLM provider. Timeout.<br/>
-            [2026-11-12 09:05:22] INFO: User logged in from new device.
-          </div>
+          <h2 className="text-sm font-bold text-white mb-4">آخرین فعالیت‌های کاربر (تیکت‌ها)</h2>
+          {logs.length > 0 ? (
+            <div className="text-xs font-mono text-neutral-300 bg-[#0A0A0A] p-4 rounded-xl overflow-x-auto space-y-2" dir="ltr">
+              {logs.map((log, i) => (
+                <div key={i}>
+                  [{new Date(log.created_at).toLocaleDateString()}] TICKET: {log.subject}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 text-neutral-500 text-xs">
+              هیچ لاگی برای این کاربر ثبت نشده است.
+            </div>
+          )}
         </div>
       </div>
 

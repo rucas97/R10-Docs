@@ -7,31 +7,12 @@ import { Sidebar } from './Sidebar';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ProfileMenu } from './ProfileMenu';
 import { DocwizeLogo } from '@/components/DocwizeLogo';
+import { AppFooter } from '@/components/layout/AppFooter';
 
-type Chat = {
-  id: string;
-  title: string;
-  updated_at: string;
-  is_pinned: boolean | null;
-  pinned_at: string | null;
-  folder_id: string | null;
-};
+type Chat = { id: string; title: string; updated_at: string; is_pinned: boolean | null; pinned_at: string | null; folder_id: string | null; };
+type FolderT = { id: string; name: string; created_at: string; is_pinned: boolean | null; };
 
-type FolderT = { 
-  id: string; 
-  name: string; 
-  created_at: string; 
-  is_pinned: boolean | null; 
-};
-
-export function AppShell({
-  user, chats, folders, children,
-}: {
-  user: { email: string; id: string };
-  chats: Chat[];
-  folders: FolderT[];
-  children: React.ReactNode;
-}) {
+export function AppShell({ user, chats, folders, children }: { user: { email: string; id: string }; chats: Chat[]; folders: FolderT[]; children: React.ReactNode; }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
@@ -78,7 +59,10 @@ export function AppShell({
            </div>
         </div>
 
-        {children}
+        <div className="flex-1 overflow-y-auto">
+          {children}
+          <AppFooter />
+        </div>
       </main>
     </div>
   );

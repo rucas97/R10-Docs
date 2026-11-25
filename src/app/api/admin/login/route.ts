@@ -9,10 +9,15 @@ export async function POST(req: Request) {
   const password = (body.password || '').trim();
 
   // Trim spaces from environment variables in case Vercel added invisible spaces
-  const envUsername = (process.env.ADMIN_USERNAME || 'admin').trim();
-  const envPassword = (process.env.ADMIN_PASSWORD || 'docwize2026').trim();
+  // Fetch from DB instead of env
+  const { createClient } = await import('@supabase/supabase-js');
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  const { data: settings } = await supabase.from('admin_settings').select('username, password').eq('id', 1).single();
 
-  if (username === envUsername && password === envPassword) {
+  const dbUsername = (settings?.username || 'admin').trim();
+  const dbPassword = (settings?.password || 'docwize2026').trim();
+
+  if (username === dbUsername && password === dbPassword) {
     const cookieStore = await cookies();
     cookieStore.set('admin_session', 'true', { 
       httpOnly: true, 

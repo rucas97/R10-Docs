@@ -70,7 +70,7 @@ export function AdminTicketChat({ ticket, initialMessages }: { ticket: any, init
         <h3 className="font-bold text-white mb-4">تغییر وضعیت</h3>
         <select value={status} onChange={e => handleStatusChange(e.target.value)} className="w-full bg-[#1A1A1A] border border-neutral-700 text-white rounded-xl px-4 py-3 outline-none">
           <option value="progress">در حال بررسی</option>
-          <option value="awaiting">منتظر پاسخ کاربر</option>
+          <option value="awaiting">منتظر پاسخ شما</option>
           <option value="closed">بسته شده</option>
         </select>
       </div>

@@ -2,8 +2,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { DocwizeLogo } from '@/components/DocwizeLogo';
-import { Users, Ticket, LogOut, Menu, X, LayoutDashboard, CreditCard, LineChart, Search } from 'lucide-react';
+import { Users, Ticket, LogOut, Menu, X, LayoutDashboard, CreditCard, LineChart, Search, Settings } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import { AppFooter } from '@/components/layout/AppFooter';
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,10 +12,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   const links = [
     { href: '/admin/dashboard', icon: LayoutDashboard, label: 'داشبورد' },
-    { href: '/admin/plans', icon: CreditCard, label: 'مدیریت پلن‌ها (Ecommerce)' },
+    { href: '/admin/plans', icon: CreditCard, label: 'مدیریت پلن‌ها' },
     { href: '/admin/analytics', icon: LineChart, label: 'آنالیز و آمار' },
     { href: '/admin/users', icon: Users, label: 'کاربران' },
-    { href: '/admin/tickets', icon: Ticket, label: 'تیکت‌های پشتیبانی' },
+    { href: '/admin/tickets', icon: Ticket, label: 'پشتیبانی' },
+    { href: '/admin/settings', icon: Settings, label: 'تنظیمات' },
   ];
 
   return (
@@ -63,6 +65,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
         <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[#0A0A0A]">
           {children}
+          <AppFooter />
         </div>
       </main>
     </div>
