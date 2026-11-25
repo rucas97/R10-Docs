@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
 
     const systemPrompt =
-      'شما یک دستیار مفید هستید که به سؤالات کاربر درباره محتوای یک سند PDF پاسخ می‌دهید.\n\n' +
+      'شما یک دستیار مفید هستید که به سؤالات کاربر درباره محتوای یک سند یا تصویر پاسخ می‌دهید.\n\n' +
       'خلاصه سند:\n' + (chat.summary || '') + '\n\n' +
       'محتوای سند (صفحه‌به‌صفحه):\n' + taggedContext + '\n\n' +
       'دستورالعمل‌های پاسخ:\n' +
@@ -75,6 +75,21 @@ export async function POST(req: NextRequest) {
       replyBlock;
 
     const lastMessage = messages[messages.length - 1];
+    
+    // Check if the file is an image for Vision API
+    let imagePart = null;
+    if (chat.document_text === "این یک تصویر است. لطفاً برای تحلیل آن سوال بپرسید." && chat.file_path) {
+      const { data: fileData } = await supabase.storage.from('pdfs').download(chat.file_path);
+      if (fileData) {
+        const buffer = await fileData.arrayBuffer();
+        imagePart = {
+          inlineData: {
+            data: Buffer.from(buffer).toString("base64"),
+            mimeType: chat.file_path.endsWith('png') ? "image/png" : "image/jpeg"
+          }
+        };
+      }
+    }
 
     await supabase.from('messages').insert({
       chat_id: chatId,

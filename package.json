@@ -20,8 +20,10 @@
     "html2canvas-pro": "^2.5.2",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.52.0",
+    "mammoth": "^1.13.0",
     "msedge-tts": "^2.0.9",
     "next": "^15.5.27",
+    "officeparser": "^8.4.1",
     "pdfjs-dist": "^4.8.69",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -31,6 +33,7 @@
     "undici": "^8.11.2",
     "unpdf": "^1.8.1",
     "voipi": "^0.0.12",
+    "xlsx": "^0.18.5",
     "xml-escape": "^1.1.0"
   },
   "devDependencies": {

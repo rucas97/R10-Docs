@@ -55,8 +55,9 @@ export function UploadZone() {
   };
 
   const handleFile = async (file: File) => {
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      setError('فقط فایل‌های PDF پشتیبانی می‌شوند.');
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!['pdf', 'docx', 'xlsx', 'pptx', 'jpg', 'jpeg', 'png'].includes(ext || '')) {
+      setError('فرمت فایل پشتیبانی نمی‌شود.');
       setStage('error');
       return;
     }
@@ -129,7 +130,7 @@ export function UploadZone() {
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf"
+          accept=".pdf,.docx,.xlsx,.pptx,.jpg,.jpeg,.png"
           className="hidden"
           disabled={busy}
           onChange={(e) => {
@@ -155,7 +156,7 @@ export function UploadZone() {
           {stage === 'idle' && (
             <>
               <h3 className="text-xl font-bold text-neutral-800 dark:text-white mb-2">
-                فایل PDF را اینجا رها کنید
+                فایل خود را اینجا رها کنید
               </h3>
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6 max-w-sm mx-auto">
                 یا برای انتخاب از دستگاه کلیک کنید — حداکثر ۵۰ مگابایت
