@@ -165,7 +165,7 @@ export function ChatPanel({ chat, pdfUrl, initialMessages, messageLookup }: { ch
 
   const chatColumn = (
     <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-      <ChatHeader chat={chat} />
+      <ChatHeader chat={chat} messages={messages} />
       <SummaryCard chatId={chat.id} summary={chat.summary} />
 
       <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-6">
