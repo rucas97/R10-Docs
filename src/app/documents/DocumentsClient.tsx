@@ -20,14 +20,13 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
   const [query, setQuery] = useState('');
   const [selectedDoc, setSelectedDoc] = useState<Chat | null>(null);
 
+  // Moved formatSize to the top to prevent hoisting errors
   const formatSize = (bytes: number) => {
     if (!bytes || bytes === 0) return '۰ KB';
     const kb = bytes / 1024;
     if (kb < 1024) return `${kb.toFixed(1)} KB`;
     return `${(kb / 1024).toFixed(2)} MB`;
   };
-
-
 
   const filtered = chats.filter(c => 
     (c.file_name || c.title || '').toLowerCase().includes(query.toLowerCase())
@@ -38,12 +37,11 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
   const totalSizeFormatted = formatSize(totalSizeBytes);
   const totalPages = chats.reduce((acc, c) => acc + (c.page_count || 0), 0);
 
-    const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
     return d.toLocaleDateString('fa-IR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
-  // Calculate reading time saved (approx 200 words per minute, 250 words per page)
   const calcReadingTime = (pages: number) => {
     const totalMinutes = Math.round(pages * 1.25);
     const hrs = Math.floor(totalMinutes / 60);
@@ -52,7 +50,6 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
     return `${mins} دقیقه`;
   };
 
-  // Hosting ends 30 days after upload
   const calcHostingEnd = (createdAt: string) => {
     const uploadDate = new Date(createdAt);
     const endDate = new Date(uploadDate.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -72,7 +69,6 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
         </Link>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-8">
         <div className="bg-white dark:bg-[#1E1E1E] border border-neutral-200 dark:border-neutral-700 rounded-2xl p-4 flex flex-col justify-center shadow-sm">
           <span className="text-xs font-semibold text-neutral-500 mb-1">کل اسناد</span>
@@ -92,7 +88,6 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
         </div>
       </div>
 
-      {/* Search */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
         <div className="relative w-full md:max-w-md">
           <Search className="absolute right-3 top-3 w-4 h-4 text-neutral-400" />
@@ -100,7 +95,6 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
         </div>
       </div>
 
-      {/* Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 items-start">
         {filtered.map(chat => {
           const folder = folders.find(f => f.id === chat.folder_id);
@@ -127,23 +121,14 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
         })}
       </div>
 
-      {/* ============================================================ */}
-      {/* DOCUMENT DETAILS MODAL (BOTTOM SHEET ON MOBILE) */}
-      {/* ============================================================ */}
+      {/* MODAL */}
       {selectedDoc && (
         <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center pointer-events-none" dir="rtl">
-          {/* Backdrop */}
           <div className="absolute inset-0 bg-black/60 dark:bg-black/80 pointer-events-auto backdrop-blur-sm" onClick={() => setSelectedDoc(null)} />
-
-          {/* Modal Content */}
           <div className="relative w-full max-w-md bg-white dark:bg-[#1A1A1A] sm:rounded-3xl rounded-t-3xl shadow-2xl pointer-events-auto flex flex-col max-h-[85vh] sm:max-h-[90vh] transform transition-transform duration-300 translate-y-0">
-            
-            {/* Drag Handle (Mobile) */}
             <div className="w-full flex justify-center pt-3 pb-1 sm:hidden cursor-pointer" onClick={() => setSelectedDoc(null)}>
               <div className="w-12 h-1.5 bg-neutral-300 dark:bg-neutral-700 rounded-full"></div>
             </div>
-
-            {/* Header */}
             <div className="sticky top-0 bg-white/95 dark:bg-[#1A1A1A]/95 backdrop-blur-md px-5 py-4 border-b border-neutral-100 dark:border-neutral-800 flex items-start justify-between z-10 sm:rounded-t-3xl">
               <div className="flex items-start gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0 mt-0.5">
@@ -153,13 +138,8 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
                   <h3 className="text-base font-bold text-neutral-900 dark:text-white truncate">{selectedDoc.file_name}</h3>
                   <div className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                     {selectedDoc.folder_id ? (
-                      <>
-                        <Folder className="w-3.5 h-3.5 text-brand-cobalt" />
-                        <span>{folders.find(f => f.id === selectedDoc.folder_id)?.name}</span>
-                      </>
-                    ) : (
-                      <span>-</span>
-                    )}
+                      <><Folder className="w-3.5 h-3.5 text-brand-cobalt" /><span>{folders.find(f => f.id === selectedDoc.folder_id)?.name}</span></>
+                    ) : (<span>-</span>)}
                   </div>
                 </div>
               </div>
@@ -167,16 +147,11 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
                 <X className="w-4 h-4" />
               </button>
             </div>
-
-            {/* Body */}
             <div className="p-5 pb-8 overflow-y-auto">
               <div className="grid grid-cols-2 gap-y-6 gap-x-4">
                 <div className="flex flex-col gap-1">
                   <span className="text-[11px] text-neutral-500">فرمت فایل</span>
-                  <div className="flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-red-500" />
-                    <span className="text-sm font-normal text-neutral-900 dark:text-white dir-ltr">PDF</span>
-                  </div>
+                  <div className="flex items-center gap-1.5"><FileText className="w-4 h-4 text-red-500" /><span className="text-sm font-normal text-neutral-900 dark:text-white dir-ltr">PDF</span></div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-[11px] text-neutral-500">تاریخ بارگذاری</span>
@@ -191,10 +166,7 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
                   <span className="text-sm font-normal text-neutral-900 dark:text-white">{selectedDoc.page_count} صفحه</span>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-1">
-                    <span className="text-[11px] text-neutral-500">تخمین زمان صرفه‌جویی</span>
-                    <Info className="w-3 h-3 text-neutral-400" />
-                  </div>
+                  <div className="flex items-center gap-1"><span className="text-[11px] text-neutral-500">تخمین زمان صرفه‌جویی</span><Info className="w-3 h-3 text-neutral-400" /></div>
                   <span className="text-sm font-normal text-neutral-900 dark:text-white">{calcReadingTime(selectedDoc.page_count)}</span>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -211,8 +183,6 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
                 </div>
               </div>
             </div>
-            
-            {/* CTA Inside Modal */}
             <div className="p-4 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-[#151515] rounded-b-3xl">
                <Link href={`/chat/${selectedDoc.id}`} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gold-500 text-black font-bold text-sm hover:bg-gold-600 transition">
                  <MessageSquare className="w-4 h-4" /> باز کردن گفتگو

@@ -16,7 +16,8 @@ export default async function ChatLayout({ children }: { children: React.ReactNo
 
   const { data: folders } = await supabase
     .from('folders')
-    .select('id, name, created_at')
+    .select('id, name, created_at, is_pinned') /* ADDED is_pinned */
+    .order('is_pinned', { ascending: false })
     .order('created_at', { ascending: true });
 
   return (
