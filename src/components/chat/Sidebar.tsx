@@ -193,7 +193,9 @@ export function Sidebar({ user, chats: initialChats, folders: initialFolders, on
               return (
                 <div key={f.id} className="mb-1">
                   <button onClick={() => setExpanded(e => ({ ...e, [f.id]: !isOpen }))} className="w-full flex items-center gap-2 px-2 py-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition">
-                    {isOpen ? {f.is_pinned ? <Pin className="w-4 h-4 text-gold-500 fill-gold-500 shrink-0" /> : <FolderOpen className="w-4 h-4 text-gold-500 shrink-0" />} : {f.is_pinned ? <Pin className="w-4 h-4 text-gold-500 fill-gold-500 shrink-0" /> : <Folder className="w-4 h-4 text-gold-500 shrink-0" />}}
+                    {isOpen
+  ? (f.is_pinned ? <Pin className="w-4 h-4 text-gold-500 fill-gold-500 shrink-0" /> : <FolderOpen className="w-4 h-4 text-gold-500 shrink-0" />)
+  : (f.is_pinned ? <Pin className="w-4 h-4 text-gold-500 fill-gold-500 shrink-0" /> : <Folder className="w-4 h-4 text-gold-500 shrink-0" />)}
                     <span className="text-xs font-bold text-neutral-700 dark:text-neutral-200 truncate flex-1 text-right">{f.name}</span>
                     <div className="flex items-center gap-1">
 <button onClick={(e) => { e.preventDefault(); handlePinFolder(f.id); }} className="p-1 hover:text-gold-500"><Pin className="w-3 h-3" /></button>
