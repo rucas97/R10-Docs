@@ -7,7 +7,7 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { AppFooter } from '@/components/layout/AppFooter';
 import { User, CreditCard, Sliders, Shield, Bell, ChevronLeft, ArrowRight, Sun, Moon, Monitor, Check, Receipt } from 'lucide-react';
 
-type Tab = 'profile' | 'subscription' | 'preferences' | 'security' | 'notifications';
+type Tab = 'profile' | 'subscription' | 'preferences' | 'security' | 'notifications' | 'transactions';
 
 export function SettingsClient({ email, phone }: { email: string; phone: string }) {
   const [activeTab, setActiveTab] = useState<Tab>('profile');
