@@ -1,25 +1,30 @@
 'use client';
 import { useState } from 'react';
-import { User, Mail, Calendar, ShieldAlert, CheckCircle, Save, Loader2 } from 'lucide-react';
+import { User, Mail, Calendar, ShieldAlert, CheckCircle, Save, Loader2, Crown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-export function UserDetailClient({ user, logs }: { user: any, logs: any[] }) {
+type Plan = { id: string; name?: string; title?: string; storage_limit?: number };
+
+export function UserDetailClient({
+  user, logs, profile, plans,
+}: { user: any; logs: any[]; profile: any | null; plans: Plan[] }) {
   const router = useRouter();
   const [name, setName] = useState(user.user_metadata?.full_name || '');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  const [currentPlanId, setCurrentPlanId] = useState<string>(profile?.plan_id || '');
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planMsg, setPlanMsg] = useState<string | null>(null);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setSuccess(false);
-    
+    setLoading(true); setSuccess(false);
     const res = await fetch(`/api/admin/users/${user.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ full_name: name })
+      body: JSON.stringify({ full_name: name }),
     });
-
     setLoading(false);
     if (res.ok) {
       setSuccess(true);
@@ -30,21 +35,42 @@ export function UserDetailClient({ user, logs }: { user: any, logs: any[] }) {
     }
   };
 
+  const changePlan = async (newPlanId: string) => {
+    if (!newPlanId) return;
+    setPlanLoading(true); setPlanMsg(null);
+    const res = await fetch(`/api/admin/users/${user.id}/plan`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan_id: newPlanId }),
+    });
+    setPlanLoading(false);
+    if (res.ok) {
+      setCurrentPlanId(newPlanId);
+      setPlanMsg('پلن کاربر به‌روزرسانی شد');
+      router.refresh();
+      setTimeout(() => setPlanMsg(null), 3000);
+    } else {
+      setPlanMsg('خطا در تغییر پلن');
+    }
+  };
+
+  const planLabel = (p: Plan) => p.name || p.title || p.id;
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      
+
       {/* Main Info Column */}
       <div className="lg:col-span-2 space-y-6">
         <div className="bg-[#171717] border border-neutral-800 rounded-3xl p-6 sm:p-8">
           <h1 className="text-xl font-black text-white mb-6">مشخصات کاربر</h1>
-          
+
           <form onSubmit={handleSave} className="space-y-6">
             <div>
               <label className="block text-xs font-bold text-neutral-400 mb-2">نام و نام خانوادگی</label>
-              <input 
-                type="text" 
-                value={name} 
-                onChange={(e) => setName(e.target.value)} 
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 placeholder="نام کاربر را وارد کنید"
                 className="w-full bg-[#1A1A1A] border border-neutral-700 text-white rounded-xl px-4 py-3 outline-none focus:border-gold-500 transition-all"
               />
@@ -68,8 +94,8 @@ export function UserDetailClient({ user, logs }: { user: any, logs: any[] }) {
               <div className="flex items-center gap-2 text-xs text-neutral-500">
                 <Calendar className="w-4 h-4" /> عضویت: {new Date(user.created_at).toLocaleDateString('fa-IR')}
               </div>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={loading}
                 className="flex items-center gap-2 px-6 py-2.5 bg-gold-500 hover:bg-gold-600 text-black font-bold text-sm rounded-xl transition disabled:opacity-50"
               >
@@ -86,7 +112,6 @@ export function UserDetailClient({ user, logs }: { user: any, logs: any[] }) {
           </form>
         </div>
 
-        {/* Live Activity Logs */}
         <div className="bg-[#171717] border border-neutral-800 rounded-3xl p-6 sm:p-8">
           <h2 className="text-sm font-bold text-white mb-4">آخرین فعالیت‌های کاربر (تیکت‌ها)</h2>
           {logs.length > 0 ? (
@@ -113,6 +138,37 @@ export function UserDetailClient({ user, logs }: { user: any, logs: any[] }) {
           </div>
           <h2 className="text-lg font-bold text-white">{name || 'کاربر بدون نام'}</h2>
           <p className="text-xs text-neutral-500 mt-1" dir="ltr">{user.id}</p>
+        </div>
+
+        {/* PLAN MANAGEMENT */}
+        <div className="bg-[#171717] border border-neutral-800 rounded-3xl p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Crown className="w-4 h-4 text-gold-500" />
+            <h2 className="text-sm font-bold text-white">مدیریت پلن</h2>
+          </div>
+
+          <div className="mb-3">
+            <p className="text-xs text-neutral-500 mb-1">پلن فعلی</p>
+            <p className="text-sm font-bold text-white">{currentPlanId || 'ثبت نشده'}</p>
+          </div>
+
+          <label className="block text-xs font-bold text-neutral-400 mb-2">تغییر پلن</label>
+          <select
+            value={currentPlanId}
+            onChange={(e) => changePlan(e.target.value)}
+            disabled={planLoading}
+            className="w-full bg-[#0A0A0A] border border-[#333] text-white rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gold-500 disabled:opacity-50"
+          >
+            <option value="">— انتخاب پلن —</option>
+            {plans.map((p) => (
+              <option key={p.id} value={p.id}>
+                {planLabel(p)}{p.storage_limit ? ` • ${p.storage_limit} GB` : ''}
+              </option>
+            ))}
+          </select>
+
+          {planLoading && <p className="text-xs text-neutral-500 mt-2">در حال ذخیره...</p>}
+          {planMsg && <p className="text-xs text-emerald-400 mt-2">{planMsg}</p>}
         </div>
       </div>
 

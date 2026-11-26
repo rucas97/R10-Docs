@@ -2,50 +2,86 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 export async function GET(req: Request) {
-  let siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.docwize.site';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.docwize.site';
   try {
     const { searchParams } = new URL(req.url);
-    const transid = searchParams.get('transid');
-    const invoiceId = searchParams.get('invoice_id');
+    const transid = searchParams.get('transid') || searchParams.get('tracking');
+    const invoiceId =
+      searchParams.get('inv') ||
+      searchParams.get('invoice_id') ||
+      searchParams.get('invoice') ||
+      searchParams.get('authority');
 
-    if (!transid || !invoiceId) {
-      return NextResponse.redirect(`${siteUrl}/payment-result?status=failed`);
+    console.log('[Payment Callback] hit:', { transid, invoiceId, url: req.url });
+
+    if (!transid) {
+      return NextResponse.redirect(`${siteUrl}/payment-result?status=failed&reason=missing_transid`);
     }
 
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-    const { data: trx } = await supabase.from('transactions').select('*').eq('authority', invoiceId).single();
-    
-    if (!trx) return NextResponse.redirect(`${siteUrl}/payment-result?status=failed`);
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    let trx: any = null;
+    if (invoiceId) {
+      const { data } = await supabase
+        .from('transactions').select('*').eq('authority', invoiceId).maybeSingle();
+      trx = data;
+    }
+    if (!trx) {
+      const { data } = await supabase
+        .from('transactions').select('*').eq('authority', transid).maybeSingle();
+      trx = data;
+    }
+    if (!trx) {
+      console.error('[Payment Callback] no transaction for', { transid, invoiceId });
+      return NextResponse.redirect(`${siteUrl}/payment-result?status=failed&reason=trx_not_found`);
+    }
+
+    console.log('[Payment Callback] matched trx:', {
+      id: trx.id, user: trx.user_id, plan: trx.plan_id, amount: trx.amount
+    });
 
     const pin = process.env.AQAYEPARDAKHT_PIN || 'C8804D84E2065CA42C0D';
-    const params = new URLSearchParams({
-      pin: pin, amount: trx.amount.toString(), transid
-    });
+    const params = new URLSearchParams({ pin, amount: String(trx.amount), transid });
 
     const res = await fetch('https://panel.aqayepardakht.ir/api/v2/verify', {
-      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
     });
     const data = await res.json();
+    console.log('[Payment Callback] verify response:', data);
 
-    if (data.status === 'success' && data.code === '1') {
+    const ok = data?.status === 'success' && String(data?.code) === '1';
+
+    if (ok) {
       await supabase.from('transactions').update({ status: 'success' }).eq('id', trx.id);
-      await supabase.from('profiles').upsert({ id: trx.user_id, plan_id: trx.plan_id });
-      return NextResponse.redirect(`${siteUrl}/payment-result?status=success&tracking=${transid}`);
-    } else {
-      await supabase.from('transactions').update({ status: 'failed' }).eq('id', trx.id);
-      return NextResponse.redirect(`${siteUrl}/payment-result?status=failed`);
+
+      const { error: profErr } = await supabase
+        .from('profiles')
+        .upsert({ id: trx.user_id, plan_id: trx.plan_id }, { onConflict: 'id' });
+      if (profErr) console.error('[Payment Callback] profile upsert failed:', profErr);
+
+      return NextResponse.redirect(
+        `${siteUrl}/payment-result?status=success&tracking=${encodeURIComponent(transid)}&plan=${encodeURIComponent(trx.plan_id || '')}`
+      );
     }
-  } catch (error) {
-    console.error('[Payment Callback] Error:', error);
-    return NextResponse.redirect(`${siteUrl}/payment-result?status=failed`);
+
+    await supabase.from('transactions').update({ status: 'failed' }).eq('id', trx.id);
+    console.error('[Payment Callback] verify rejected:', data);
+    return NextResponse.redirect(`${siteUrl}/payment-result?status=failed&reason=verify_failed`);
+  } catch (error: any) {
+    console.error('[Payment Callback] Exception:', error);
+    return NextResponse.redirect(`${siteUrl}/payment-result?status=failed&reason=exception`);
   }
 }
 
 export async function POST(req: Request) {
   const form = await req.formData();
-  const qs = new URLSearchParams();
-  for (const [k, v] of form.entries()) qs.set(k, String(v));
   const url = new URL(req.url);
-  url.search = qs.toString();
+  // Merge form fields INTO existing query params instead of overwriting them.
+  for (const [k, v] of form.entries()) url.searchParams.set(k, String(v));
   return GET(new Request(url.toString(), { method: 'GET' }));
 }

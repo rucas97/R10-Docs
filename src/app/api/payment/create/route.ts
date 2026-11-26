@@ -8,15 +8,38 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { planId, amount } = await req.json();
-    
-    // Use the new PIN provided
-    const pin = process.env.AQAYEPARDAKHT_PIN || 'C8804D84E2065CA42C0D';
-    const callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.docwize.site'}/api/payment/callback`;
 
-    // Create transaction record
+    const pin = process.env.AQAYEPARDAKHT_PIN || 'C8804D84E2065CA42C0D';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.docwize.site';
+
     const invoiceId = `INV-${Date.now()}`;
+    const callbackUrl = `${siteUrl}/api/payment/callback?inv=${encodeURIComponent(invoiceId)}`;
+
+    const params = new URLSearchParams({
+      pin, amount: String(amount), callback: callbackUrl, invoice_id: invoiceId,
+    });
+
+    console.log('[Payment] create request:', { planId, amount, invoiceId, callbackUrl });
+
+    const res = await fetch('https://panel.aqayepardakht.ir/api/v2/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+
+    const data = await res.json();
+    console.log('[Payment] gateway response:', data);
+
+    if (data.status !== 'success' || !data.transid) {
+      return NextResponse.json({ error: data.message || 'خطای درگاه پرداخت' }, { status: 400 });
+    }
+
     const { data: trx, error } = await supabase.from('transactions').insert({
-      user_id: user.id, plan_id: planId, amount, status: 'pending', authority: invoiceId
+      user_id: user.id,
+      plan_id: planId,
+      amount,
+      status: 'pending',
+      authority: String(data.transid),
     }).select().single();
 
     if (error) {
@@ -24,22 +47,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'DB Error' }, { status: 500 });
     }
 
-    // Call Agha-ye Pardakht
-    const params = new URLSearchParams({
-      pin: pin, amount: amount.toString(), callback: callbackUrl, invoice_id: invoiceId
-    });
-
-    const res = await fetch('https://panel.aqayepardakht.ir/api/v2/create', {
-      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params
-    });
-    
-    const data = await res.json();
-    console.log('[Payment] Gateway Response:', data); // Logged to Vercel for debugging
-
-    if (data.status === 'success') {
-      return NextResponse.json({ redirect: `https://panel.aqayepardakht.ir/startpay/${data.transid}` });
-    }
-    return NextResponse.json({ error: data.message || 'خطای درگاه پرداخت' }, { status: 400 });
+    console.log('[Payment] pending trx stored:', { trxId: trx.id, gatewayTransid: data.transid });
+    return NextResponse.json({ redirect: `https://panel.aqayepardakht.ir/startpay/${data.transid}` });
   } catch (e: any) {
     console.error('[Payment] Error:', e.message);
     return NextResponse.json({ error: 'خطای شبکه درگاه' }, { status: 500 });

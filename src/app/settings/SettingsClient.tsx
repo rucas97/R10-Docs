@@ -9,7 +9,7 @@ import { User, CreditCard, Sliders, Shield, Bell, ChevronLeft, ArrowRight, Sun, 
 
 type Tab = 'profile' | 'subscription' | 'preferences' | 'security' | 'notifications' | 'transactions';
 
-export function SettingsClient({ email, phone }: { email: string; phone: string }) {
+export function SettingsClient({ email, phone, planName = 'رایگان', storageLimitGB = 5, storageUsedBytes = 0 }: { email: string; phone: string; planName?: string; storageLimitGB?: number; storageUsedBytes?: number }) {
   const [activeTab, setActiveTab] = useState<Tab>('profile');
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
   const prefs = usePrefs();
@@ -137,19 +137,19 @@ export function SettingsClient({ email, phone }: { email: string; phone: string 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
                   <p className="text-xs font-semibold text-neutral-500 mb-1">پلن فعلی شما</p>
-                  <p className="text-lg font-bold text-neutral-900 dark:text-white">پلن رایگان</p>
+                  <p className="text-lg font-bold text-neutral-900 dark:text-white">{planName}</p>
                 </div>
                 <Link href="/pricing" className="px-5 py-2.5 bg-gold-500 hover:bg-gold-600 text-black font-bold text-sm rounded-xl transition shadow-sm text-center">ارتقا به حرفه‌ای</Link>
               </div>
               <div>
                 <div className="flex justify-between text-xs font-semibold mb-2">
-                  <span className="text-neutral-600 dark:text-neutral-300">مصرف صفحات پردازش‌شده</span>
-                  <span className="text-neutral-900 dark:text-white dir-ltr">۱۵ / ۵۰ صفحه</span>
+                  <span className="text-neutral-600 dark:text-neutral-300">فضای ذخیره‌سازی</span>
+                  <span className="text-neutral-900 dark:text-white dir-ltr">{(storageUsedBytes / (1024 * 1024 * 1024)).toFixed(2)} GB / {storageLimitGB} GB</span>
                 </div>
                 <div className="w-full bg-neutral-200 dark:bg-neutral-800 rounded-full h-2.5">
-                  <div className="bg-brand-cobalt dark:bg-brand-blue h-2.5 rounded-full" style={{ width: '30%' }}></div>
+                  <div className="bg-brand-cobalt dark:bg-brand-blue h-2.5 rounded-full" style={{ width: `${Math.min(100, (storageUsedBytes / (storageLimitGB * 1024 * 1024 * 1024)) * 100)}%` }}></div>
                 </div>
-                <p className="text-[11px] text-neutral-500 mt-2">۳۵ صفحه دیگر تا پایان ماه باقی مانده است.</p>
+                <p className="text-[11px] text-neutral-500 mt-2">{Math.max(0, storageLimitGB - (storageUsedBytes / (1024 * 1024 * 1024))).toFixed(2)} GB فضای باقی‌مانده از {storageLimitGB} GB</p>
               </div>
             </div>
           </div>
