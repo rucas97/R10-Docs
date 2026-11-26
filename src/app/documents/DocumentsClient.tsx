@@ -166,7 +166,7 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
                   <div className="flex items-center gap-1.5">
                   {(() => {
                     const ext = selectedDoc.file_name.split('.').pop()?.toLowerCase() || 'pdf';
-                    const colors = { pdf: 'text-red-500', docx: 'text-blue-500', xlsx: 'text-green-500', pptx: 'text-orange-500', jpg: 'text-purple-500', jpeg: 'text-purple-500', png: 'text-purple-500' };
+                    const colors: Record<string, string> = { pdf: 'text-red-500', docx: 'text-blue-500', xlsx: 'text-green-500', pptx: 'text-orange-500', jpg: 'text-purple-500', jpeg: 'text-purple-500', png: 'text-purple-500' };
                     const Icon = ['jpg','jpeg','png'].includes(ext) ? ImageIcon : ext === 'xlsx' ? FileSpreadsheet : ext === 'pptx' ? Presentation : FileText;
                     return <><Icon className={`w-4 h-4 ${colors[ext] || 'text-neutral-500'}`} /><span className="text-sm font-normal text-neutral-900 dark:text-white uppercase dir-ltr">{ext}</span></>;
                   })()}
