@@ -1,17 +1,17 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { DocwizeLogo } from '@/components/DocwizeLogo';
 
+type Step = 'phone' | 'bale-wait' | 'otp';
 
 export function LoginForm() {
   const router = useRouter();
   const supabase = createClient();
 
-  const [step, setStep] = useState<'phone' | 'otp'>('phone');
+  const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
@@ -32,24 +32,46 @@ export function LoginForm() {
     return '+98' + clean;
   };
 
-  const handleSendOtp = async (e: React.FormEvent) => {
+  const handleSendSms = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    const clean = phone.replace(/\D/g, '');
-    if (clean.length < 10) {
+    if (phone.replace(/\D/g, '').length < 10) {
       setError('شماره موبایل معتبر وارد کنید.');
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({ phone: formatPhone(phone) });
+    const { error } = await supabase.auth.signInWithOtp({
+      phone: formatPhone(phone),
+      options: { data: { otp_channel: 'sms' } },
+    });
     setLoading(false);
-    if (error) {
-      setError(error.message);
-      return;
-    }
+    if (error) { setError(error.message); return; }
     setStep('otp');
     setTimer(120);
     setTimeout(() => otpRefs.current[0]?.focus(), 300);
+  };
+
+  const handleBaleLogin = async () => {
+    setError(null);
+    if (phone.replace(/\D/g, '').length < 10) {
+      setError('شماره موبایل معتبر وارد کنید.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/prepare-bale-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'خطا');
+      // Redirect the user directly to the Bale deep link.
+      window.location.href = data.deepLink;
+    } catch (e: any) {
+      setError(e.message);
+      setLoading(false);
+    }
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -70,10 +92,7 @@ export function LoginForm() {
     e.preventDefault();
     setError(null);
     const code = otp.join('');
-    if (code.length !== 6) {
-      setError('کد ۶ رقمی را کامل وارد کنید.');
-      return;
-    }
+    if (code.length !== 6) { setError('کد ۶ رقمی را کامل وارد کنید.'); return; }
     setLoading(true);
     const { error } = await supabase.auth.verifyOtp({
       phone: formatPhone(phone),
@@ -97,7 +116,6 @@ export function LoginForm() {
 
   return (
     <div className="min-h-[100dvh] bg-surface-canvasDark text-neutral-100 flex flex-col lg:flex-row">
-
       {/* Left: Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-[#0A0A0A] border-l border-neutral-800/50 flex-col items-center justify-center overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gold-500/10 rounded-full blur-[100px] pointer-events-none" />
@@ -119,41 +137,39 @@ export function LoginForm() {
         </div>
 
         <div className="w-full max-w-sm bg-surface-aiBubbleDark border border-neutral-800 rounded-3xl p-5 sm:p-6 shadow-2xl">
-          {step === 'phone' ? (
+          {step === 'phone' && (
             <>
               <h2 className="text-xl font-bold text-white mb-1">ورود یا ثبت‌نام</h2>
-              <p className="text-xs text-neutral-400 mb-6">برای دسترسی به اسناد خود وارد شوید.</p>
-
+              <p className="text-xs text-neutral-400 mb-4">شماره خود را وارد کنید و روش دریافت کد را انتخاب کنید.</p>
               {error && (
-                <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">
-                  {error}
-                </div>
+                <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">{error}</div>
               )}
-
-              <form onSubmit={handleSendOtp}>
+              <form onSubmit={handleSendSms}>
                 <label className="block text-xs font-medium text-neutral-400 mb-2">شماره موبایل</label>
                 <div className="relative flex items-center bg-surface-inputDark border border-neutral-700 rounded-xl focus-within:border-neutral-500 overflow-hidden mb-4" dir="ltr">
                   <div className="flex items-center justify-center px-3 border-r border-neutral-700 bg-neutral-800/30 h-11">
                     <span className="text-neutral-400 text-sm font-medium">+98</span>
                   </div>
                   <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="9123456789"
-                    maxLength={11}
-                    dir="ltr"
-                    required
+                    type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
+                    placeholder="9123456789" maxLength={11} dir="ltr" required
                     className="w-full bg-transparent text-white text-left outline-none px-3 text-sm placeholder:text-neutral-600"
                   />
                 </div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-gold-500 hover:bg-gold-600 text-black font-bold text-sm rounded-xl py-2.5 transition active:scale-[0.98] disabled:opacity-50"
-                >
-                  {loading ? 'در حال ارسال...' : 'دریافت کد ورود'}
-                </button>
+
+                <div className="grid grid-cols-2 gap-2 mb-5">
+                  <button type="submit" disabled={loading}
+                    className="flex items-center justify-center gap-2 rounded-xl border border-gold-500 bg-gold-500/10 text-gold-500 py-2.5 text-xs font-bold transition disabled:opacity-50">
+                    پیامک
+                  </button>
+                  <button type="button" onClick={handleBaleLogin} disabled={loading}
+                    className="flex items-center justify-center gap-2 rounded-xl border border-[#3B82F6] bg-[#3B82F6]/10 text-[#60A5FA] py-2.5 text-xs font-bold transition disabled:opacity-50">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 3C6.48 3 2 6.94 2 11.8c0 2.86 1.5 5.4 3.87 6.92L5 22l3.66-1.89c1.06.3 2.19.46 3.34.46 5.52 0 10-3.94 10-8.8S17.52 3 12 3zm.55 12.57c-2.86 0-5.18-1.38-5.18-3.09 0-.8.6-1.53 1.5-2.06-.07-.28-.1-.57-.1-.87 0-1.8 1.45-3.26 3.24-3.26.68 0 1.31.21 1.84.57.4-.14.83-.22 1.28-.22 1.85 0 3.35 1.2 3.35 2.68 0 .66-.3 1.27-.8 1.74.14.33.22.7.22 1.08 0 1.71-2.32 3.09-5.18 3.09z" />
+                    </svg>
+                    بله
+                  </button>
+                </div>
               </form>
 
               <div className="relative flex items-center justify-center my-5">
@@ -161,11 +177,8 @@ export function LoginForm() {
                 <div className="relative bg-surface-aiBubbleDark px-3 text-[10px] text-neutral-500">یا</div>
               </div>
 
-              <button
-                onClick={signInWithGoogle}
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 bg-surface-inputDark border border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800 text-white text-sm font-medium rounded-xl px-4 py-2.5 transition"
-              >
+              <button onClick={signInWithGoogle} disabled={loading}
+                className="w-full flex items-center justify-center gap-2 bg-surface-inputDark border border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800 text-white text-sm font-medium rounded-xl px-4 py-2.5 transition">
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                   <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -175,63 +188,52 @@ export function LoginForm() {
                 ورود با حساب گوگل
               </button>
             </>
-          ) : (
+          )}
+
+          {step === 'otp' && (
             <>
-              <button
-                type="button"
-                onClick={() => setStep('phone')}
-                className="mb-4 flex items-center gap-1 text-xs text-neutral-400 hover:text-white transition"
-              >
+              <button type="button" onClick={() => setStep('phone')}
+                className="mb-4 flex items-center gap-1 text-xs text-neutral-400 hover:text-white transition">
                 ← ویرایش شماره
               </button>
-
               <p className="text-sm text-neutral-400 mb-5 leading-relaxed">
-                کد ۶ رقمی ارسال‌شده به <span className="font-bold text-white" dir="ltr">{phone}</span> را وارد کنید.
+                کد ۶ رقمی ارسال‌شده از طریق <span className="font-bold text-white">پیامک</span> به{' '}
+                <span className="font-bold text-white" dir="ltr">{phone}</span> را وارد کنید.
               </p>
-
               {error && (
-                <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">
-                  {error}
-                </div>
+                <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">{error}</div>
               )}
-
               <form onSubmit={handleVerifyOtp}>
                 <div className="flex justify-between gap-2 mb-6" dir="ltr">
                   {otp.map((digit, i) => (
                     <input
                       key={i}
                       ref={(el) => { otpRefs.current[i] = el; }}
-                      type="tel"
-                      inputMode="numeric"
-                      maxLength={1}
-                      value={digit}
+                      type="tel" inputMode="numeric" maxLength={1} value={digit}
                       onChange={(e) => handleOtpChange(i, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(i, e)}
                       className="w-11 h-12 bg-surface-inputDark border border-neutral-700 text-white text-center text-lg font-bold rounded-lg outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition"
                     />
                   ))}
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-gold-500 hover:bg-gold-600 text-black font-bold text-sm rounded-xl py-2.5 transition active:scale-[0.98] mb-4 disabled:opacity-50"
-                >
+                <button type="submit" disabled={loading}
+                  className="w-full bg-gold-500 hover:bg-gold-600 text-black font-bold text-sm rounded-xl py-2.5 transition active:scale-[0.98] mb-4 disabled:opacity-50">
                   {loading ? 'در حال تایید...' : 'تایید و ورود'}
                 </button>
-
                 <div className="text-center text-[11px] text-neutral-500">
-                  {timer > 0
-                    ? <>ارسال مجدد تا <span className="text-gold-500 font-bold" dir="ltr">۰{Math.floor(timer / 60)}:{String(timer % 60).padStart(2, '0')}</span></>
-                    : <button type="button" onClick={handleSendOtp} className="text-gold-500 hover:underline">ارسال مجدد کد</button>
-                  }
+                  {timer > 0 ? (
+                    <>ارسال مجدد تا <span className="text-gold-500 font-bold" dir="ltr">۰{Math.floor(timer / 60)}:{String(timer % 60).padStart(2, '0')}</span></>
+                  ) : (
+                    <button type="button" onClick={handleSendSms} className="text-gold-500 hover:underline">ارسال مجدد کد</button>
+                  )}
                 </div>
               </form>
             </>
           )}
 
           <div className="mt-4 pt-3 border-t border-neutral-800/50 text-center text-[10px] text-neutral-500 leading-relaxed">
-            با ورود به Docwize، <a href="#" className="text-neutral-300 hover:text-gold-500">شرایط و قوانین</a> و <a href="#" className="text-neutral-300 hover:text-gold-500">حریم خصوصی</a> ما را می‌پذیرید.
+            با ورود به Docwize، <a href="#" className="text-neutral-300 hover:text-gold-500">شرایط و قوانین</a> و{' '}
+            <a href="#" className="text-neutral-300 hover:text-gold-500">حریم خصوصی</a> ما را می‌پذیرید.
           </div>
         </div>
       </div>
