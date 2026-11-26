@@ -19,7 +19,8 @@ export function SettingsClient({ email, phone }: { email: string; phone: string 
     subscription: 'اشتراک و مصرف',
     preferences: 'تنظیمات ظاهری',
     security: 'امنیت و حریم خصوصی',
-    notifications: 'اعلان‌ها'
+    notifications: 'اعلان‌ها',
+    transactions: 'تاریخچه تراکنش‌ها'
   };
 
   const openPanel = (tab: Tab) => {
