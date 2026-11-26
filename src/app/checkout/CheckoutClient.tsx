@@ -11,6 +11,27 @@ export function CheckoutClient({ planId }: { planId: string }) {
 
   const planName = planId === 'enterprise' ? 'پلن سازمانی' : 'پلن حرفه‌ای';
 
+
+  const handleSimulate = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/payment/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId, amount })
+      });
+      if (res.ok) {
+        window.location.href = `/payment-result?status=success&tracking=SIM-${Date.now()}`;
+      } else {
+        alert('خطا در شبیه‌سازی');
+        setLoading(false);
+      }
+    } catch (e) {
+      alert('خطا در شبکه');
+      setLoading(false);
+    }
+  };
+
   const handlePayment = async () => {
     setLoading(true);
     try {
@@ -59,9 +80,13 @@ export function CheckoutClient({ planId }: { planId: string }) {
           {loading ? 'در حال انتقال...' : 'انتقال به درگاه پرداخت'}
         </button>
         
-        <div className="flex items-center justify-center gap-1.5 text-xs text-neutral-500">
+        <div className="flex items-center justify-center gap-1.5 text-xs text-neutral-500 mb-6">
           <Lock className="w-3.5 h-3.5" /><span>پرداخت امن از طریق درگاه آقای پرداخت</span>
         </div>
+
+        <button onClick={handleSimulate} disabled={loading} className="w-full py-3 rounded-xl bg-green-500/10 text-green-600 border border-green-500/20 font-bold text-sm hover:bg-green-500/20 transition flex items-center justify-center gap-2">
+          شبیه‌سازی پرداخت موفق (تست)
+        </button>
       </div>
     </>
   );

@@ -69,6 +69,10 @@ export function PlanEditor({ initialPlans }: { initialPlans: any[] }) {
               <span className="text-xs text-neutral-300">حداکثر صفحات:</span>
               <input type="number" value={p.feature_flags?.max_pages || 50} onChange={e => updateFeature(p.id, 'max_pages', parseInt(e.target.value))} className="w-20 bg-[#0A0A0A] border border-[#333] text-white rounded-lg px-2 py-1 text-xs outline-none" />
             </div>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs text-neutral-300">فضای ذخیره‌سازی (MB):</span>
+              <input type="number" value={p.storage_limit || 100} onChange={e => setPlans(plans.map(x => x.id === p.id ? {...x, storage_limit: parseInt(e.target.value)} : x))} className="w-20 bg-[#0A0A0A] border border-[#333] text-white rounded-lg px-2 py-1 text-xs outline-none" />
+            </div>
           </div>
 
           <button onClick={() => handleSave(p)} disabled={saving === p.id} className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-gold-500 text-black font-bold text-xs hover:bg-gold-600 transition">
