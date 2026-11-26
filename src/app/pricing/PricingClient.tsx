@@ -13,7 +13,7 @@ export function PricingClient({ email }: { email: string }) {
   useEffect(() => {
     const supabase = createClient();
     supabase.from('plans').select('*').order('price', { ascending: true }).then(({ data }) => {
-      if (data) setPlans(data);
+      if (data && data.length > 0) setPlans(data); else setPlans([{id: 'free', name: 'پلن پایه', price: 0, feature_flags: { max_pages: 50, formats: ['pdf'] }}, {id: 'pro', name: 'پلن حرفه‌ای', price: 1000, feature_flags: { max_pages: 1000, formats: ['pdf', 'docx'], popular: true }}, {id: 'enterprise', name: 'پلن سازمانی', price: 1000, feature_flags: { max_pages: 9999, formats: ['pdf', 'docx', 'xlsx', 'pptx', 'image'], ocr: true }}]);
       setLoading(false);
     });
   }, []);

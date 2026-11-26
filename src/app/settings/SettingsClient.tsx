@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePrefs, savePrefs } from '@/lib/preferences';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { AppFooter } from '@/components/layout/AppFooter';
-import { User, CreditCard, Sliders, Shield, Bell, ChevronLeft, ArrowRight, Sun, Moon, Monitor, Check } from 'lucide-react';
+import { User, CreditCard, Sliders, Shield, Bell, ChevronLeft, ArrowRight, Sun, Moon, Monitor, Check, Receipt } from 'lucide-react';
 
 type Tab = 'profile' | 'subscription' | 'preferences' | 'security' | 'notifications';
 
@@ -42,6 +42,7 @@ export function SettingsClient({ email, phone }: { email: string; phone: string 
             { id: 'profile', icon: User, title: 'اطلاعات حساب', desc: 'نام، ایمیل و تصویر پروفایل' },
             { id: 'subscription', icon: CreditCard, title: 'اشتراک و مصرف', desc: 'مدیریت پلن و سهمیه پردازش' },
             { id: 'preferences', icon: Sliders, title: 'تنظیمات ظاهری', desc: 'تم رنگی و تنظیمات چیدمان' },
+            { id: 'transactions', icon: Receipt, title: 'تاریخچه تراکنش‌ها', desc: 'سوابق پرداخت‌ها' },
             { id: 'security', icon: Shield, title: 'امنیت و حریم خصوصی', desc: 'رمز عبور و حذف اسناد' },
             { id: 'notifications', icon: Bell, title: 'اعلان‌ها', desc: 'مدیریت ایمیل‌ها و اطلاع‌رسانی' },
           ].map(item => (
@@ -67,6 +68,7 @@ export function SettingsClient({ email, phone }: { email: string; phone: string 
             { id: 'profile', icon: User, title: 'اطلاعات حساب' },
             { id: 'subscription', icon: CreditCard, title: 'اشتراک و مصرف' },
             { id: 'preferences', icon: Sliders, title: 'تنظیمات ظاهری' },
+            { id: 'transactions', icon: Receipt, title: 'تاریخچه تراکنش‌ها' },
             { id: 'security', icon: Shield, title: 'امنیت و حریم خصوصی' },
             { id: 'notifications', icon: Bell, title: 'اعلان‌ها' },
           ].map(item => (
@@ -218,6 +220,33 @@ export function SettingsClient({ email, phone }: { email: string; phone: string 
                   <input type="checkbox" className="w-5 h-5 accent-gold-500" />
                 </div>
              </div>
+          </div>
+
+
+          {/* TRANSACTIONS PANEL */}
+          <div className={`p-4 md:p-8 ${activeTab === 'transactions' ? 'block' : 'hidden'}`}>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-8">سوابق پرداخت‌ها و فاکتورهای اشتراک خود را مشاهده کنید.</p>
+            <div className="bg-white dark:bg-[#1A1A1A] border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden">
+              <table className="w-full text-right text-sm">
+                <thead className="bg-neutral-50 dark:bg-[#151515] text-neutral-500 dark:text-neutral-400 text-xs">
+                  <tr>
+                    <th className="px-4 py-3">تاریخ</th>
+                    <th className="px-4 py-3">مبلغ (تومان)</th>
+                    <th className="px-4 py-3">شماره تراکنش</th>
+                    <th className="px-4 py-3">وضعیت</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                  {/* Note: We will fetch these via API in a real scenario, here we use a placeholder that you will wire up */}
+                  <tr>
+                    <td className="px-4 py-4 text-neutral-500" dir="ltr">۱۴۰۵/۰۹/۰۴</td>
+                    <td className="px-4 py-4 font-bold text-neutral-900 dark:text-white">۱,۰۰۰</td>
+                    <td className="px-4 py-4 font-mono text-xs text-neutral-500">TRX-984521</td>
+                    <td className="px-4 py-4"><span className="px-2 py-1 rounded bg-green-500/10 text-green-500 text-xs font-bold">موفق</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
         </div>

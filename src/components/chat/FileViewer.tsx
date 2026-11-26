@@ -18,10 +18,9 @@ export function FileViewer({
   const isPdf = ext === 'pdf';
   const isImage = ['jpg', 'jpeg', 'png'].includes(ext);
   
-  // For Office files, we can view original via Google Docs Viewer or view extracted text
-  const [viewMode, setViewMode] = useState<'original' | 'text'>('original');
+  // Default to text mode for Office to avoid Google Viewer errors
+  const [viewMode, setViewMode] = useState<'original' | 'text'>(isPdf || isImage ? 'original' : 'text');
 
-  // Auto-switch to text mode if there is a highlight request
   useEffect(() => {
     if (highlightSnippet && !isPdf && !isImage) {
       setViewMode('text');
@@ -30,27 +29,23 @@ export function FileViewer({
 
   const googleViewerUrl = useMemo(() => {
     if (!fileUrl || isPdf || isImage) return '';
-    return `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`;
+    return `https://docs.google.com/gview?url=${encodeURIComponent(window.location.origin + fileUrl)}&embedded=true`;
   }, [fileUrl, isPdf, isImage]);
 
-  // Highlight the text for non-PDFs
   const highlightedHtml = useMemo(() => {
     const rawText = pageTexts?.[currentPage - 1] || '';
     if (!highlightSnippet || !rawText) return rawText.replace(/\n/g, '<br/>');
 
-    // Escape regex special characters in the snippet
     const escaped = highlightSnippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(`(${escaped})`, 'gi');
     
-    // Replace matching text with a yellow <mark> tag
     return rawText
       .replace(/\n/g, '<br/>')
-      .replace(regex, '<mark class="bg-gold-500/30 text-white rounded px-1">$1</mark>');
+      .replace(regex, '<mark class="bg-gold-500/40 text-neutral-900 dark:text-white rounded px-1">$1</mark>');
   }, [pageTexts, currentPage, highlightSnippet]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-surface-canvas dark:bg-[#0a0a0a]">
-      {/* Toolbar */}
       <div className="h-12 shrink-0 flex items-center justify-between px-3 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#171717]">
         <div className="flex items-center gap-2">
           {isPdf ? <FileText className="w-4 h-4 text-red-500" /> : 
@@ -78,7 +73,6 @@ export function FileViewer({
         </div>
       </div>
 
-      {/* Content Area */}
       <div className="flex-1 overflow-auto bg-neutral-100 dark:bg-[#0a0a0a] p-4 flex justify-center items-start">
         {!fileUrl ? (
           <div className="text-sm text-neutral-500 mt-10">فایل در دسترس نیست.</div>
@@ -86,12 +80,11 @@ export function FileViewer({
           <img src={fileUrl} alt={fileName} className="max-w-full h-auto rounded-lg shadow-lg" />
         ) : isPdf ? (
           <iframe src={`${fileUrl}#page=${currentPage}&zoom=page-width&toolbar=0`} className="w-full h-full border-0 bg-white" title="PDF" />
-        ) : viewMode === 'original' ? (
+        ) : viewMode === 'original' && googleViewerUrl ? (
           <div className="w-full h-full flex flex-col rounded-xl overflow-hidden shadow-lg border border-neutral-200 dark:border-neutral-800 bg-white">
             <iframe src={googleViewerUrl} className="w-full h-full border-0" title="Document" />
           </div>
         ) : (
-          // Text view for Office files (allows highlighting)
           <div className="w-full max-w-3xl bg-white dark:bg-[#171717] rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-800 p-8">
              <div className="prose prose-sm dark:prose-invert max-w-none text-neutral-800 dark:text-neutral-200 leading-relaxed" 
                   dangerouslySetInnerHTML={{ __html: highlightedHtml }} />

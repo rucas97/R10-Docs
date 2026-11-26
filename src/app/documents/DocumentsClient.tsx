@@ -163,7 +163,14 @@ export function DocumentsClient({ chats, folders }: { chats: Chat[], folders: Fo
               <div className="grid grid-cols-2 gap-y-6 gap-x-4">
                 <div className="flex flex-col gap-1">
                   <span className="text-[11px] text-neutral-500">فرمت فایل</span>
-                  <div className="flex items-center gap-1.5"><FileText className="w-4 h-4 text-red-500" /><span className="text-sm font-normal text-neutral-900 dark:text-white dir-ltr">PDF</span></div>
+                  <div className="flex items-center gap-1.5">
+                  {(() => {
+                    const ext = selectedDoc.file_name.split('.').pop()?.toLowerCase() || 'pdf';
+                    const colors = { pdf: 'text-red-500', docx: 'text-blue-500', xlsx: 'text-green-500', pptx: 'text-orange-500', jpg: 'text-purple-500', jpeg: 'text-purple-500', png: 'text-purple-500' };
+                    const Icon = ['jpg','jpeg','png'].includes(ext) ? ImageIcon : ext === 'xlsx' ? FileSpreadsheet : ext === 'pptx' ? Presentation : FileText;
+                    return <><Icon className={`w-4 h-4 ${colors[ext] || 'text-neutral-500'}`} /><span className="text-sm font-normal text-neutral-900 dark:text-white uppercase dir-ltr">{ext}</span></>;
+                  })()}
+                </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-[11px] text-neutral-500">تاریخ بارگذاری</span>

@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { DocwizeLogo } from '@/components/DocwizeLogo';
-import { Users, Ticket, LogOut, Menu, X, LayoutDashboard, CreditCard, LineChart, Search, Settings } from 'lucide-react';
+import { Users, Ticket, LogOut, Menu, X, LayoutDashboard, CreditCard, LineChart, Search, Settings, ShoppingCart, FileSpreadsheet, ShieldAlert } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
@@ -13,8 +13,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     { href: '/admin/dashboard', icon: LayoutDashboard, label: 'داشبورد' },
     { href: '/admin/plans', icon: CreditCard, label: 'مدیریت پلن‌ها' },
     { href: '/admin/analytics', icon: LineChart, label: 'آنالیز و آمار' },
+    { href: '/admin/orders', icon: ShoppingCart, label: 'سفارشات و تراکنش‌ها' },
+    { href: '/admin/accounting', icon: FileSpreadsheet, label: 'حسابداری و درآمد' },
     { href: '/admin/users', icon: Users, label: 'کاربران' },
     { href: '/admin/tickets', icon: Ticket, label: 'پشتیبانی' },
+    { href: '/admin/audit', icon: ShieldAlert, label: 'لاگ‌های امنیتی' },
     { href: '/admin/settings', icon: Settings, label: 'تنظیمات' },
   ];
 
