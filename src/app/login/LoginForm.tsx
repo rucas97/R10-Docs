@@ -5,13 +5,18 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { DocwizeLogo } from '@/components/DocwizeLogo';
 
-type Step = 'phone' | 'bale-wait' | 'otp';
+type Step = 'phone' | 'otp';
+type Channel = 'sms' | 'bale';
+
+const BALE_PHONE_KEY = 'docwize_bale_pending_phone';
+const BALE_TS_KEY = 'docwize_bale_pending_at';
 
 export function LoginForm() {
   const router = useRouter();
   const supabase = createClient();
 
   const [step, setStep] = useState<Step>('phone');
+  const [channel, setChannel] = useState<Channel>('sms');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
@@ -25,6 +30,23 @@ export function LoginForm() {
     return () => clearInterval(id);
   }, [timer]);
 
+  useEffect(() => {
+    try {
+      const p = sessionStorage.getItem(BALE_PHONE_KEY);
+      const t = sessionStorage.getItem(BALE_TS_KEY);
+      if (p && t && Date.now() - Number(t) < 10 * 60 * 1000) {
+        setPhone(p);
+        setChannel('bale');
+        setStep('otp');
+        setTimer(120);
+        setTimeout(() => otpRefs.current[0]?.focus(), 300);
+      } else {
+        sessionStorage.removeItem(BALE_PHONE_KEY);
+        sessionStorage.removeItem(BALE_TS_KEY);
+      }
+    } catch {}
+  }, []);
+
   const formatPhone = (p: string) => {
     const clean = p.replace(/\D/g, '');
     if (clean.startsWith('98')) return '+' + clean;
@@ -32,20 +54,19 @@ export function LoginForm() {
     return '+98' + clean;
   };
 
-  const handleSendSms = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendSms = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setError(null);
-    if (phone.replace(/\D/g, '').length < 10) {
-      setError('شماره موبایل معتبر وارد کنید.');
-      return;
-    }
+    if (phone.replace(/\D/g, '').length < 10) { setError('شماره موبایل معتبر وارد کنید.'); return; }
     setLoading(true);
+    try { sessionStorage.removeItem(BALE_PHONE_KEY); sessionStorage.removeItem(BALE_TS_KEY); } catch {}
     const { error } = await supabase.auth.signInWithOtp({
       phone: formatPhone(phone),
       options: { data: { otp_channel: 'sms' } },
     });
     setLoading(false);
     if (error) { setError(error.message); return; }
+    setChannel('sms');
     setStep('otp');
     setTimer(120);
     setTimeout(() => otpRefs.current[0]?.focus(), 300);
@@ -53,21 +74,45 @@ export function LoginForm() {
 
   const handleBaleLogin = async () => {
     setError(null);
-    if (phone.replace(/\D/g, '').length < 10) {
-      setError('شماره موبایل معتبر وارد کنید.');
-      return;
-    }
+    if (phone.replace(/\D/g, '').length < 10) { setError('شماره موبایل معتبر وارد کنید.'); return; }
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/prepare-bale-otp', {
+      // 1) Create PENDING session on the server
+      const prep = await fetch('/api/auth/prepare-bale-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'خطا');
-      // Redirect the user directly to the Bale deep link.
-      window.location.href = data.deepLink;
+      const ct = prep.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) throw new Error('خطای سرور. لطفاً دوباره تلاش کنید.');
+      const prepData = await prep.json();
+      if (!prep.ok || !prepData.sessionId || !prepData.deepLink) {
+        throw new Error(prepData.error || 'خطا در ایجاد نشست بله');
+      }
+
+      // 2) Trigger Supabase OTP — same call as SMS, with Bale metadata
+      const { error: authErr } = await supabase.auth.signInWithOtp({
+        phone: formatPhone(phone),
+        options: {
+          data: {
+            otp_channel: 'bale',
+            bale_session_id: prepData.sessionId,
+          },
+        },
+      });
+      if (authErr) throw new Error(authErr.message);
+
+      // 3) Persist state, show OTP step, then jump to Bale
+      try {
+        sessionStorage.setItem(BALE_PHONE_KEY, phone);
+        sessionStorage.setItem(BALE_TS_KEY, String(Date.now()));
+      } catch {}
+      setChannel('bale');
+      setStep('otp');
+      setTimer(120);
+      setLoading(false);
+
+      window.location.href = prepData.deepLink;
     } catch (e: any) {
       setError(e.message);
       setLoading(false);
@@ -83,9 +128,7 @@ export function LoginForm() {
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      otpRefs.current[index - 1]?.focus();
-    }
+    if (e.key === 'Backspace' && !otp[index] && index > 0) otpRefs.current[index - 1]?.focus();
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
@@ -101,12 +144,12 @@ export function LoginForm() {
     });
     setLoading(false);
     if (error) { setError(error.message); return; }
+    try { sessionStorage.removeItem(BALE_PHONE_KEY); sessionStorage.removeItem(BALE_TS_KEY); } catch {}
     router.push('/chat');
   };
 
   const signInWithGoogle = async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin + '/auth/callback' },
@@ -116,20 +159,16 @@ export function LoginForm() {
 
   return (
     <div className="min-h-[100dvh] bg-surface-canvasDark text-neutral-100 flex flex-col lg:flex-row">
-      {/* Left: Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-[#0A0A0A] border-l border-neutral-800/50 flex-col items-center justify-center overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gold-500/10 rounded-full blur-[100px] pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-brand-cobalt/10 rounded-full blur-[100px] pointer-events-none" />
         <div className="relative z-10 flex flex-col items-center text-center px-12">
           <DocwizeLogo className="w-20 h-20 text-gold-500 mb-8 drop-shadow-[0_0_15px_rgba(255,178,0,0.3)]" />
           <h1 className="text-3xl font-black text-white mb-4">به Docwize خوش آمدید</h1>
-          <p className="text-neutral-400 text-sm leading-relaxed max-w-sm">
-            دستیار هوشمند تحلیل اسناد. با هر فایل PDF گفتگو کنید و در کسری از ثانیه به پاسخ‌های دقیق برسید.
-          </p>
+          <p className="text-neutral-400 text-sm leading-relaxed max-w-sm">دستیار هوشمند تحلیل اسناد. با هر فایل PDF گفتگو کنید و در کسری از ثانیه به پاسخ‌های دقیق برسید.</p>
         </div>
       </div>
 
-      {/* Right: Form */}
       <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-8 flex-1">
         <div className="flex items-center gap-2 mb-6 lg:hidden">
           <DocwizeLogo className="w-7 h-7 text-gold-500" />
@@ -141,9 +180,7 @@ export function LoginForm() {
             <>
               <h2 className="text-xl font-bold text-white mb-1">ورود یا ثبت‌نام</h2>
               <p className="text-xs text-neutral-400 mb-4">شماره خود را وارد کنید و روش دریافت کد را انتخاب کنید.</p>
-              {error && (
-                <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">{error}</div>
-              )}
+              {error && <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">{error}</div>}
               <form onSubmit={handleSendSms}>
                 <label className="block text-xs font-medium text-neutral-400 mb-2">شماره موبایل</label>
                 <div className="relative flex items-center bg-surface-inputDark border border-neutral-700 rounded-xl focus-within:border-neutral-500 overflow-hidden mb-4" dir="ltr">
@@ -197,12 +234,10 @@ export function LoginForm() {
                 ← ویرایش شماره
               </button>
               <p className="text-sm text-neutral-400 mb-5 leading-relaxed">
-                کد ۶ رقمی ارسال‌شده از طریق <span className="font-bold text-white">پیامک</span> به{' '}
+                کد ۶ رقمی ارسال‌شده از طریق <span className="font-bold text-white">{channel === 'bale' ? 'بله' : 'پیامک'}</span> به{' '}
                 <span className="font-bold text-white" dir="ltr">{phone}</span> را وارد کنید.
               </p>
-              {error && (
-                <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">{error}</div>
-              )}
+              {error && <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">{error}</div>}
               <form onSubmit={handleVerifyOtp}>
                 <div className="flex justify-between gap-2 mb-6" dir="ltr">
                   {otp.map((digit, i) => (
@@ -224,7 +259,8 @@ export function LoginForm() {
                   {timer > 0 ? (
                     <>ارسال مجدد تا <span className="text-gold-500 font-bold" dir="ltr">۰{Math.floor(timer / 60)}:{String(timer % 60).padStart(2, '0')}</span></>
                   ) : (
-                    <button type="button" onClick={handleSendSms} className="text-gold-500 hover:underline">ارسال مجدد کد</button>
+                    <button type="button" onClick={channel === 'bale' ? handleBaleLogin : () => handleSendSms()}
+                      className="text-gold-500 hover:underline">ارسال مجدد کد</button>
                   )}
                 </div>
               </form>

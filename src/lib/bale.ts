@@ -1,5 +1,4 @@
-// Bale Bot API helpers — free tier, no business license required.
-
+// Bale Bot API — free tier. No imports from other routes; safe to load anywhere.
 const BALE_API = 'https://tapi.bale.ai';
 
 export async function baleSendMessage(chatId: number | string, text: string) {
