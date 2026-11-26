@@ -40,3 +40,12 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${siteUrl}/payment-result?status=failed`);
   }
 }
+
+export async function POST(req: Request) {
+  const form = await req.formData();
+  const qs = new URLSearchParams();
+  for (const [k, v] of form.entries()) qs.set(k, String(v));
+  const url = new URL(req.url);
+  url.search = qs.toString();
+  return GET(new Request(url.toString(), { method: 'GET' }));
+}
