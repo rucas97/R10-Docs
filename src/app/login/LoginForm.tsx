@@ -23,6 +23,7 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [timer, setTimer] = useState(0);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const inFlightRef = useRef(false);
 
   useEffect(() => {
     if (timer <= 0) return;
@@ -56,12 +57,13 @@ export function LoginForm() {
 
   const handleSendSms = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setError(null);
-    if (phone.replace(/\D/g, '').length < 10) { setError('شماره موبایل معتبر وارد کنید.'); return; }
+    if (phone.replace(/\D/g, '').length < 10) { setError('شماره موبایل معتبر وارد کنید.'); inFlightRef.current = false; return; }
     setLoading(true);
     try {
       try { sessionStorage.removeItem(BALE_PHONE_KEY); sessionStorage.removeItem(BALE_TS_KEY); } catch {}
-      // Clear any pending Bale session for this phone so the hook routes to SMS
       const prep = await fetch('/api/auth/prepare-bale-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -82,15 +84,17 @@ export function LoginForm() {
       setError(e.message);
     } finally {
       setLoading(false);
+      inFlightRef.current = false;
     }
   };
 
   const handleBaleLogin = async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setError(null);
-    if (phone.replace(/\D/g, '').length < 10) { setError('شماره موبایل معتبر وارد کنید.'); return; }
+    if (phone.replace(/\D/g, '').length < 10) { setError('شماره موبایل معتبر وارد کنید.'); inFlightRef.current = false; return; }
     setLoading(true);
     try {
-      // 1) Server clears any stale PENDING rows, inserts a fresh one, returns deep link
       const prep = await fetch('/api/auth/prepare-bale-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -101,11 +105,9 @@ export function LoginForm() {
       const prepData = await prep.json();
       if (!prep.ok || !prepData.deepLink) throw new Error(prepData.error || 'خطا');
 
-      // 2) Trigger Supabase OTP. Hook looks ONLY at the PENDING row, not metadata.
       const { error: authErr } = await supabase.auth.signInWithOtp({ phone: formatPhone(phone) });
       if (authErr) throw new Error(authErr.message);
 
-      // 3) Persist state so the OTP boxes are waiting when user returns from Bale
       try {
         sessionStorage.setItem(BALE_PHONE_KEY, phone);
         sessionStorage.setItem(BALE_TS_KEY, String(Date.now()));
@@ -115,11 +117,11 @@ export function LoginForm() {
       setTimer(120);
       setLoading(false);
 
-      // 4) Jump to Bale — user taps Start, bot replies with the SAME OTP that SMS would have used
       window.location.href = prepData.deepLink;
     } catch (e: any) {
       setError(e.message);
       setLoading(false);
+      inFlightRef.current = false;
     }
   };
 
